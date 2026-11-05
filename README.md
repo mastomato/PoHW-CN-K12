@@ -4,6 +4,8 @@
 
 原版是 MIT 协议的 Android TV 答题守护：到点弹出全屏题目，答对解锁一段时间，跨应用悬浮、离线可用。这个仓库保留全部原有能力，只改了题库与设置。
 
+**直接下载安装**：[PoHW-cnmt-term-v1.0.1.apk](https://github.com/mastomato/PoHW-CN-K12/releases/download/v1.0.1-cn.1/PoHW-cnmt-term-v1.0.1.apk)（1.79 MB，支持 Android 5.0+，自签名）· [Release 说明](https://github.com/mastomato/PoHW-CN-K12/releases/tag/v1.0.1-cn.1)
+
 ![控制台](screenshots/console.png)
 
 ## 相对原版的改动
