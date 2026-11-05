@@ -1,0 +1,15 @@
+# 构建产物与本地密钥
+.build/
+dist/*.idsig
+*.keystore
+*.jks
+*.p12
+*.pem
+keystore.pass
+
+# Python
+__pycache__/
+*.pyc
+
+# 系统
+.DS_Store
