@@ -15,16 +15,21 @@ import android.widget.TextView;
 public final class Ui {
     private Ui() {}
 
-    public static final int BG = 0xFF10141C;
-    public static final int CARD = 0xFFF7F9FC;
-    public static final int TEXT = 0xFF16233A;
-    public static final int MUTED = 0xFF8A97AC;
-    public static final int BLUE = 0xFF185FA5;
-    public static final int BLUE_LIGHT = 0xFFE6F1FB;
-    public static final int GREEN = 0xFF1D9E75;
-    public static final int RED = 0xFFA32D2D;
-    public static final int AMBER = 0xFFFFD166;
-    public static final int BTN_BG = 0xFF243044;
+    // 与答题页共用的浅色底、白色卡片和紫色遥控器焦点。
+    public static final int BG = 0xFFF7F8FC;
+    public static final int CARD = 0xFFFFFFFF;
+    public static final int TEXT = 0xFF222339;
+    public static final int MUTED = 0xFF85879D;
+    public static final int PURPLE = 0xFF7058DE;
+    public static final int PURPLE_DARK = 0xFF5840C1;
+    public static final int PURPLE_LIGHT = 0xFFEBE6FF;
+    public static final int BORDER = 0xFFE9E8F0;
+    public static final int BLUE = PURPLE;
+    public static final int BLUE_LIGHT = PURPLE_LIGHT;
+    public static final int GREEN = 0xFF2AA377;
+    public static final int RED = 0xFFC25252;
+    public static final int AMBER = PURPLE;
+    public static final int BTN_BG = 0xFFF7F7FB;
 
     public static int dp(Context c, float v) {
         return (int) (v * c.getResources().getDisplayMetrics().density + 0.5f);
@@ -43,6 +48,16 @@ public final class Ui {
         g.setColor(color);
         g.setCornerRadius(dp(c, radiusDp));
         return g;
+    }
+
+    public static GradientDrawable roundBorder(int color, int stroke, int radiusDp, Context c) {
+        GradientDrawable g = round(color, radiusDp, c);
+        g.setStroke(dp(c, 2), stroke);
+        return g;
+    }
+
+    public static boolean isLightButton(int bg) {
+        return bg == CARD || bg == BTN_BG || bg == PURPLE_LIGHT;
     }
 
     public static TextView tv(Context c, String text, int sp, int color, int gravity) {
@@ -69,19 +84,25 @@ public final class Ui {
         b.setMinWidth(0);
         b.setMinimumWidth(0);
         b.setPadding(dp(c, 14), dp(c, 8), dp(c, 14), dp(c, 8));
-        b.setBackground(round(bg, 10, c));
+        b.setBackground(isLightButton(bg) ? roundBorder(bg, BORDER, 10, c) : round(bg, 10, c));
         b.setFocusable(true);
         b.setFocusableInTouchMode(true);
         return b;
     }
 
-    /** 遥控器 DPAD 焦点：高亮底色 + 白字，失焦还原。 */
+    /** 遥控器 DPAD 焦点：浅色按钮使用与答题选项相同的浅紫底与紫色描边。 */
     public static void focus(final Button b, final Context c,
                              final int normalBg, final int focusedBg, final int normalFg) {
         b.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override public void onFocusChange(View v, boolean has) {
-                b.setBackground(round(has ? focusedBg : normalBg, 10, c));
-                b.setTextColor(has ? Color.WHITE : normalFg);
+                if (isLightButton(normalBg)) {
+                    b.setBackground(roundBorder(has ? PURPLE_LIGHT : normalBg,
+                            has ? PURPLE : BORDER, 10, c));
+                    b.setTextColor(has ? PURPLE_DARK : normalFg);
+                } else {
+                    b.setBackground(round(has ? focusedBg : normalBg, 10, c));
+                    b.setTextColor(has ? Color.WHITE : normalFg);
+                }
             }
         });
     }

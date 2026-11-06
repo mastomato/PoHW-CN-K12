@@ -30,7 +30,7 @@ public class SettingsActivity extends Activity {
 
     private static final String NL = "\n";
     private static final String[] PRESETS = {"", "http://10.0.2.2:8000/", "http://127.0.0.1:8000/"};
-    private static final int CARD_BG = 0xFF161E2B;
+    private static final int CARD_BG = Ui.CARD;
     /** 居中窄栏的左右留白：卡片与底部操作条共用，保证视觉对齐。 */
     private static final int GUTTER_DP = 88;
     /** 行标签宽度：普通行与学科行分别取不同值，避免右侧取值被压窄。 */
@@ -114,7 +114,7 @@ public class SettingsActivity extends Activity {
         l.setPadding(Ui.dp(this, 40), Ui.dp(this, 12), Ui.dp(this, 40), Ui.dp(this, 12));
         l.setGravity(Gravity.CENTER_HORIZONTAL);
 
-        gateTitle = Ui.tv(this, "", 24, 0xFFFFFFFF);
+        gateTitle = Ui.tv(this, "", 24, Ui.TEXT);
         l.addView(gateTitle, Ui.fixed(this, 38));
         gateMask = Ui.tv(this, "", 30, Ui.AMBER);
         l.addView(gateMask, Ui.fixed(this, 44));
@@ -128,12 +128,12 @@ public class SettingsActivity extends Activity {
             LinearLayout r = Ui.hbox(this);
             for (int col = 0; col < 3; col++) {
                 final String k = keys[row * 3 + col];
-                Button btn = Ui.button(this, k, 0xFF243044, 0xFFF5F7FA, 20);
+                Button btn = Ui.button(this, k, Ui.BTN_BG, Ui.TEXT, 20);
                 btn.setFocusableInTouchMode(false);
                 btn.setOnClickListener(new View.OnClickListener() {
                     @Override public void onClick(View v) { onKey(k); }
                 });
-                Ui.focus(btn, this, 0xFF243044, 0xFFF5F7FA);
+                Ui.focus(btn, this, Ui.BTN_BG, Ui.TEXT);
                 if (firstGateBtn == null) firstGateBtn = btn;
                 LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
                         Ui.dp(this, 120), Ui.dp(this, 46));
@@ -200,7 +200,7 @@ public class SettingsActivity extends Activity {
         View bar = new View(this);
         bar.setBackground(Ui.round(Ui.AMBER, 2, this));
         head.addView(bar, new LinearLayout.LayoutParams(Ui.dp(this, 4), Ui.dp(this, 18)));
-        TextView tv = Ui.tv(this, title, 16, 0xFFF5F7FA, Gravity.LEFT);
+        TextView tv = Ui.tv(this, title, 16, Ui.TEXT, Gravity.LEFT);
         tv.setPadding(Ui.dp(this, 10), 0, 0, 0);
         head.addView(tv, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
@@ -240,17 +240,17 @@ public class SettingsActivity extends Activity {
     private Button addRow(LinearLayout parent, String label, View.OnClickListener l) {
         LinearLayout row = Ui.hbox(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.addView(Ui.tv(this, label, 15, 0xFFC7D2E2, Gravity.LEFT),
+        row.addView(Ui.tv(this, label, 15, Ui.TEXT, Gravity.LEFT),
                 new LinearLayout.LayoutParams(Ui.dp(this, LABEL_DP),
                         ViewGroup.LayoutParams.WRAP_CONTENT));
-        Button b = Ui.button(this, "", Ui.BTN_BG, 0xFFF5F7FA, 14);
+        Button b = Ui.button(this, "", Ui.BTN_BG, Ui.TEXT, 14);
         b.setSingleLine(false);
         b.setMaxLines(2);
         b.setEllipsize(null);
         b.setMinHeight(Ui.dp(this, 44));
         b.setPadding(Ui.dp(this, 10), Ui.dp(this, 2), Ui.dp(this, 10), Ui.dp(this, 2));
         b.setOnClickListener(l);
-        Ui.focus(b, this, Ui.BTN_BG, 0xFFF5F7FA);
+        Ui.focus(b, this, Ui.BTN_BG, Ui.TEXT);
         // 高度随系统字体缩放自适应，避免大字模式下两行文案被固定 44dp 裁切。
         row.addView(b, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
@@ -260,9 +260,10 @@ public class SettingsActivity extends Activity {
     }
 
     private void addButton(LinearLayout parent, String label, int bg, View.OnClickListener l) {
-        Button b = Ui.button(this, label, bg, 0xFFFFFFFF, 15);
+        int fg = Ui.isLightButton(bg) ? Ui.TEXT : Ui.CARD;
+        Button b = Ui.button(this, label, bg, fg, 15);
         b.setOnClickListener(l);
-        Ui.focus(b, this, bg, 0xFFFFFFFF);
+        Ui.focus(b, this, bg, fg);
         b.setMinHeight(Ui.dp(this, 44));
         parent.addView(b, rowLp());
         track(b);
@@ -273,7 +274,7 @@ public class SettingsActivity extends Activity {
         root.setBackgroundColor(Ui.BG);
         root.setPadding(Ui.dp(this, 36), Ui.dp(this, 10), Ui.dp(this, 36), Ui.dp(this, 8));
 
-        root.addView(Ui.tv(this, "家长设置", 24, 0xFFFFFFFF), Ui.fixed(this, 36));
+        root.addView(Ui.tv(this, "家长设置", 24, Ui.TEXT), Ui.fixed(this, 36));
         pinState = Ui.tv(this, "", 13, Ui.MUTED, Gravity.LEFT);
         pinState.setPadding(Ui.dp(this, GUTTER_DP), 0, 0, 0);
         root.addView(pinState, Ui.fixed(this, 22));
@@ -352,7 +353,7 @@ public class SettingsActivity extends Activity {
         rowResume = addRow(boot, "恢复播放", new View.OnClickListener() {
             @Override public void onClick(View v) { st.resumePlayback(!st.resumePlayback()); refreshRows(); }
         });
-        addButton(boot, "开启厂商自启动设置", 0xFF2C6E8F, new View.OnClickListener() {
+        addButton(boot, "开启厂商自启动设置", Ui.BTN_BG, new View.OnClickListener() {
             @Override public void onClick(View v) {
                 BootSettings.open(SettingsActivity.this);
                 Toast.makeText(SettingsActivity.this,
@@ -366,7 +367,7 @@ public class SettingsActivity extends Activity {
 
         // ---- 04 错题库 ----
         LinearLayout wrong = addCard(col, "04  错题库");
-        addButton(wrong, "查看错题库", 0xFFB06A2C, new View.OnClickListener() {
+        addButton(wrong, "查看错题库", Ui.BTN_BG, new View.OnClickListener() {
             @Override public void onClick(View v) {
                 startActivity(new Intent(SettingsActivity.this, WrongBookActivity.class));
             }
@@ -379,9 +380,9 @@ public class SettingsActivity extends Activity {
         urlEdit.setSingleLine(true);
         urlEdit.setHint("https://your-server/  (index.json 所在目录)");
         urlEdit.setTextSize(14);
-        urlEdit.setTextColor(0xFFF5F7FA);
-        urlEdit.setHintTextColor(0xFF7C8AA3);
-        urlEdit.setBackground(Ui.round(0xFF1B2432, 8, this));
+        urlEdit.setTextColor(Ui.TEXT);
+        urlEdit.setHintTextColor(Ui.MUTED);
+        urlEdit.setBackground(Ui.roundBorder(Ui.BTN_BG, Ui.BORDER, 8, this));
         urlEdit.setPadding(Ui.dp(this, 10), Ui.dp(this, 6), Ui.dp(this, 10), Ui.dp(this, 6));
         urlEdit.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
         urlEdit.addTextChangedListener(new android.text.TextWatcher() {
@@ -395,7 +396,7 @@ public class SettingsActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 42)));
         track(urlEdit);
 
-        addButton(online, "填入示例地址", 0xFF243044, new View.OnClickListener() {
+        addButton(online, "填入示例地址", Ui.BTN_BG, new View.OnClickListener() {
             @Override public void onClick(View v) {
                 presetIdx = (presetIdx + 1) % PRESETS.length;
                 setUrlText(PRESETS[presetIdx], true);
@@ -405,11 +406,11 @@ public class SettingsActivity extends Activity {
         bankStatus = Ui.tv(this, "", 13, Ui.MUTED, Gravity.LEFT);
         bankStatus.setPadding(Ui.dp(this, 10), Ui.dp(this, 6), Ui.dp(this, 10), Ui.dp(this, 6));
         bankStatus.setMinHeight(Ui.dp(this, 72));
-        bankStatus.setBackground(Ui.round(0xFF1B2432, 10, this));
+        bankStatus.setBackground(Ui.round(Ui.BTN_BG, 10, this));
         online.addView(bankStatus, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        addButton(online, "检查题库更新", 0xFF6C4F9E, new View.OnClickListener() {
+        addButton(online, "检查题库更新", Ui.PURPLE, new View.OnClickListener() {
             @Override public void onClick(View v) {
                 String url = urlEdit.getText().toString().trim();
                 if (url.isEmpty()) {
@@ -440,16 +441,16 @@ public class SettingsActivity extends Activity {
         LinearLayout footer = Ui.hbox(this);
         footer.setGravity(Gravity.CENTER_VERTICAL);
         footer.setPadding(Ui.dp(this, GUTTER_DP), 0, Ui.dp(this, GUTTER_DP), 0);
-        btnChangePin = Ui.button(this, "修改家长密码", 0xFFA32D2D, 0xFFFFFFFF, 15);
+        btnChangePin = Ui.button(this, "修改家长密码", Ui.BTN_BG, Ui.TEXT, 15);
         btnChangePin.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { gate.startChange(); enterGate(false); }
         });
-        Ui.focus(btnChangePin, this, 0xFFA32D2D, 0xFFFFFFFF);
-        btnSave = Ui.button(this, "保存并返回", 0xFF1D9E75, 0xFFFFFFFF, 15);
+        Ui.focus(btnChangePin, this, Ui.BTN_BG, Ui.TEXT);
+        btnSave = Ui.button(this, "保存并返回", Ui.PURPLE, Ui.CARD, 15);
         btnSave.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { save(); }
         });
-        Ui.focus(btnSave, this, 0xFF1D9E75, 0xFFFFFFFF);
+        Ui.focus(btnSave, this, Ui.PURPLE, Ui.CARD);
         LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(0, Ui.dp(this, 44), 1f);
         fp.setMargins(Ui.dp(this, 5), Ui.dp(this, 4), Ui.dp(this, 5), Ui.dp(this, 4));
         footer.addView(btnChangePin, fp);
@@ -525,11 +526,11 @@ public class SettingsActivity extends Activity {
     private void addSubjectRow(LinearLayout parent, final int subj) {
         LinearLayout row = Ui.hbox(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.addView(Ui.tv(this, Subjects.name(subj), 14, 0xFFC7D2E2, Gravity.LEFT),
+        row.addView(Ui.tv(this, Subjects.name(subj), 14, Ui.TEXT, Gravity.LEFT),
                 new LinearLayout.LayoutParams(
                         Ui.dp(this, SUBJ_LABEL_DP), ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        Button ed = Ui.button(this, "", Ui.BTN_BG, 0xFFF5F7FA, 14);
+        Button ed = Ui.button(this, "", Ui.BTN_BG, Ui.TEXT, 14);
         ed.setSingleLine(false);
         ed.setMaxLines(2);
         ed.setEllipsize(null);
@@ -542,11 +543,11 @@ public class SettingsActivity extends Activity {
                 refreshRows();
             }
         });
-        Ui.focus(ed, this, Ui.BTN_BG, 0xFFF5F7FA);
+        Ui.focus(ed, this, Ui.BTN_BG, Ui.TEXT);
         row.addView(ed, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 2f));
 
-        Button wt = Ui.button(this, "", Ui.BTN_BG, 0xFFF5F7FA, 14);
+        Button wt = Ui.button(this, "", Ui.BTN_BG, Ui.TEXT, 14);
         wt.setSingleLine(false);
         wt.setMaxLines(2);
         wt.setEllipsize(null);
@@ -559,7 +560,7 @@ public class SettingsActivity extends Activity {
                 refreshRows();
             }
         });
-        Ui.focus(wt, this, Ui.BTN_BG, 0xFFF5F7FA);
+        Ui.focus(wt, this, Ui.BTN_BG, Ui.TEXT);
         row.addView(wt, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         track(ed, wt);

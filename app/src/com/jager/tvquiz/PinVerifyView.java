@@ -63,11 +63,11 @@ public final class PinVerifyView {
         layer.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
 
         LinearLayout card = Ui.vbox(ctx);
-        card.setBackground(Ui.round(0xFF1B2432, 14, ctx));
+        card.setBackground(Ui.round(Ui.CARD, 14, ctx));
         card.setPadding(Ui.dp(ctx, 24), Ui.dp(ctx, 14), Ui.dp(ctx, 24), Ui.dp(ctx, 12));
         card.setGravity(Gravity.CENTER_HORIZONTAL);
 
-        card.addView(Ui.tv(ctx, "关闭守护 · 请输入家长密码", 21, 0xFFFFFFFF),
+        card.addView(Ui.tv(ctx, "关闭守护 · 请输入家长密码", 21, Ui.TEXT),
                 Ui.fixed(ctx, 36));
         mask = Ui.tv(ctx, "", 28, Ui.AMBER);
         card.addView(mask, Ui.fixed(ctx, 42));
@@ -80,13 +80,14 @@ public final class PinVerifyView {
             LinearLayout r = Ui.hbox(ctx);
             for (int col = 0; col < 3; col++) {
                 final String k = keys[row * 3 + col];
-                Button btn = Ui.button(ctx, k,
-                        "确定".equals(k) ? Ui.GREEN : 0xFF243044, 0xFFF5F7FA, 18);
+                int bg = "确定".equals(k) ? Ui.PURPLE : Ui.BTN_BG;
+                int fg = "确定".equals(k) ? Ui.CARD : Ui.TEXT;
+                Button btn = Ui.button(ctx, k, bg, fg, 18);
                 btn.setFocusableInTouchMode(false);
                 btn.setOnClickListener(new View.OnClickListener() {
                     @Override public void onClick(View v) { key(k); }
                 });
-                Ui.focus(btn, ctx, "确定".equals(k) ? Ui.GREEN : 0xFF243044, 0xFFF5F7FA);
+                Ui.focus(btn, ctx, bg, fg);
                 if (first == null) first = btn;
                 LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
                         Ui.dp(ctx, 110), Ui.dp(ctx, 42));
@@ -97,12 +98,12 @@ public final class PinVerifyView {
                     ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(ctx, 50)));
         }
 
-        Button cancel = Ui.button(ctx, "取消关闭", 0xFFA32D2D, 0xFFFFFFFF, 16);
+        Button cancel = Ui.button(ctx, "取消关闭", Ui.BTN_BG, Ui.TEXT, 16);
         cancel.setFocusableInTouchMode(false);
         cancel.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { cancel(); }
         });
-        Ui.focus(cancel, ctx, 0xFFA32D2D, 0xFFFFFFFF);
+        Ui.focus(cancel, ctx, Ui.BTN_BG, Ui.TEXT);
         LinearLayout.LayoutParams nb = new LinearLayout.LayoutParams(
                 Ui.dp(ctx, 200), Ui.dp(ctx, 42));
         nb.gravity = Gravity.CENTER_HORIZONTAL;

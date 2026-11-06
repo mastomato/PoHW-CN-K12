@@ -12,9 +12,9 @@ public final class GuardState {
 
     private GuardState() {}
 
-    public static final int ON_GREEN = 0xFF1D9E75;
+    public static final int ON_GREEN = 0xFF2AA377;
     public static final int OFF_GRAY = 0xFF37425A;
-    public static final int STOP_RED = 0xFFA32D2D;
+    public static final int STOP_RED = 0xFFC25252;
 
     /** 运行中「开启守护」已生效 -> 灰；未运行 -> 绿（可点）。 */
     public static int startColor(boolean running) { return running ? OFF_GRAY : ON_GREEN; }

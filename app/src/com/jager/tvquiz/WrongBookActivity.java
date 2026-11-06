@@ -88,9 +88,10 @@ public class WrongBookActivity extends Activity {
 
     private Button addButton(LinearLayout row, String label, int bg,
                              View.OnClickListener l) {
-        Button b = Ui.button(this, label, bg, 0xFFFFFFFF, 16);
+        int fg = Ui.isLightButton(bg) ? Ui.TEXT : Ui.CARD;
+        Button b = Ui.button(this, label, bg, fg, 16);
         b.setOnClickListener(l);
-        Ui.focus(b, this, bg, Ui.BLUE, 0xFFFFFFFF);
+        Ui.focus(b, this, bg, Ui.PURPLE_DARK, fg);
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
                 Ui.dp(this, 158), Ui.dp(this, 48));
         p.setMargins(Ui.dp(this, 5), 0, Ui.dp(this, 5), 0);
@@ -103,14 +104,14 @@ public class WrongBookActivity extends Activity {
         l.setBackgroundColor(Ui.BG);
         l.setPadding(Ui.dp(this, 40), Ui.dp(this, 14), Ui.dp(this, 40), Ui.dp(this, 10));
 
-        l.addView(Ui.tv(this, "错题库  ·  Proof of Homework", 26, 0xFFFFFFFF),
+        l.addView(Ui.tv(this, "知行答题守护  /  错题库", 26, Ui.TEXT),
                 Ui.fixed(this, 40));
         title = Ui.tv(this, "", 15, Ui.AMBER, Gravity.LEFT);
         l.addView(title, Ui.fixed(this, 26));
 
-        detail = Ui.tv(this, "", 17, 0xFFE6EDF7, Gravity.LEFT);
+        detail = Ui.tv(this, "", 17, Ui.TEXT, Gravity.LEFT);
         detail.setPadding(Ui.dp(this, 18), Ui.dp(this, 12), Ui.dp(this, 18), Ui.dp(this, 12));
-        detail.setBackground(Ui.round(0xFF1B2432, 12, this));
+        detail.setBackground(Ui.round(Ui.CARD, 12, this));
         detail.setLineSpacing(0, 1.22f);
         ScrollView detailScroll = new ScrollView(this);
         detailScroll.setFillViewport(true);
@@ -118,19 +119,19 @@ public class WrongBookActivity extends Activity {
         l.addView(detailScroll, Ui.fill(1));
 
         LinearLayout row = Ui.hbox(this);
-        btnPrev = addButton(row, "上一题", 0xFF243044, new View.OnClickListener() {
+        btnPrev = addButton(row, "上一题", Ui.CARD, new View.OnClickListener() {
             @Override public void onClick(View v) { prev(); }
         });
-        btnNext = addButton(row, "下一题", 0xFF243044, new View.OnClickListener() {
+        btnNext = addButton(row, "下一题", Ui.CARD, new View.OnClickListener() {
             @Override public void onClick(View v) { next(); }
         });
-        btnDelete = addButton(row, "删除本题", 0xFFA32D2D, new View.OnClickListener() {
+        btnDelete = addButton(row, "删除本题", Ui.BTN_BG, new View.OnClickListener() {
             @Override public void onClick(View v) { deleteCurrent(); }
         });
-        btnClear = addButton(row, "清空错题库", 0xFF6C4F9E, new View.OnClickListener() {
+        btnClear = addButton(row, "清空错题库", Ui.BTN_BG, new View.OnClickListener() {
             @Override public void onClick(View v) { clearAll(); }
         });
-        btnBack = addButton(row, "返回控制台", 0xFF1D9E75, new View.OnClickListener() {
+        btnBack = addButton(row, "返回控制台", Ui.PURPLE, new View.OnClickListener() {
             @Override public void onClick(View v) { finish(); }
         });
         l.addView(row, Ui.fixed(this, 56));
