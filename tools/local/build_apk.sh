@@ -21,8 +21,8 @@ AAPT2="${AAPT2:-$ANDROID_HOME/build-tools/$BT_VERSION/aapt2}"
 D8_JAR="${D8_JAR:-$ANDROID_HOME/build-tools/$BT_VERSION/lib/d8.jar}"
 ZIPALIGN="${ZIPALIGN:-$ANDROID_HOME/build-tools/$BT_VERSION/zipalign}"
 ANDROID_JAR="${ANDROID_JAR:-$ANDROID_HOME/platforms/$PLATFORM/android.jar}"
-VER_CODE="${VER_CODE:-18}"
-VER_NAME="${VER_NAME:-1.0.2}"
+VER_CODE="${VER_CODE:-20}"
+VER_NAME="${VER_NAME:-1.0.3}"
 
 for f in "$JAVA_HOME/bin/javac" "$AAPT2" "$D8_JAR" "$ZIPALIGN" "$ANDROID_JAR"; do
   [ -e "$f" ] || { echo "缺少依赖: $f"; exit 1; }

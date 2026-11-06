@@ -22,10 +22,10 @@ command -v aapt2 javac d8 zipalign apksigner   # 应全部能找到
 ```bash
 bash tests/run.sh                                   # 201 个 JVM 检查（8 组）
 python3 tools/quizbank/verify.py app/assets/quiz.db  # 题库独立校验
-bash app/build.sh                                    # 产出 dist/PoHW-v1.0.2.apk
+bash app/build.sh                                    # 产出 dist/PoHW-v1.0.3.apk
 ```
 
-`app/build.sh` 的九个阶段：
+`app/build.sh` 的十个阶段：
 
 | 阶段 | 动作 |
 | --- | --- |
@@ -95,7 +95,7 @@ Gradle Wrapper、联网拉依赖和一套额外的构建缓存。命令行链路
 `EXTRA_STOP_VERIFIED`。另外确认 `QuickBootReceiver` 已注册、
 `KeyRouter` / `QuizFlow` / `BehaviorV601Test` 真的被编译与执行。
 
-`[0/9]` 还会执行 `python3 tests/layout_contract.py`：**114 条**源码级布局与发布契约断言，
+`[0/9]` 还会执行 `python3 tests/layout_contract.py`：**109 条**源码级布局与发布契约断言，
 覆盖首页 3×2 网格、设置页单列卡片流、等宽 weight 布局、四向 DPAD 焦点链、
 滚动容器参数（`setFillViewport` / `Ui.fill(1)` / wrap-content 子容器）、
 四槽学科权重、双路径 SQL、题目学科标签反推以及证书门禁本身；复审加固后还钉死
@@ -107,13 +107,14 @@ OTHER 池路由字面量、SQL 双份参数绑定、池保持兜底常量、`has
 `QuizDb.java` 的 `POOL_*` 命名常量提取与 Java 同源的真实 SQL，校验双份绑定与三层兜底，
 对内置题库做 9 年级 × 4 池 × 60 次池隔离、两次 5000 次配比分布、全学科关闭 0 题校验，
 以及 `FALLBACK_POOL_OK`（模拟三年级英语池 / 其他池为空，兜底仍保持学科约束、不串池）。
-`tests/mutation_suite.py` 落仓库可复核：**29 组负向变异**（含注释诱饵、破坏绑定、
+`tests/mutation_suite.py` 落仓库可复核：**28 组负向变异**（含注释诱饵、破坏绑定、
 去掉池保持兜底、不带发布密钥构建、恢复 gradeWide SQL）全部被契约 / 运行时分布 / 构建门禁拦下，
 末尾自动恢复源码哈希并用发布密钥重建 `dist/`。
 注意 `grep -q 'new int[Subjects.COUNT]'` 会把方括号当正则字符类；必须用 `grep -qF`。
-`[0/9]` 另钉死本轮新增结构：`ROW_GAP_DP`（设置页行间距）、`LaunchPolicy.shouldAutoGuard`
-（首页冷启动自动守护）、Manifest 里的 `DonateActivity`，以及两张收款码 PNG 与
-`tools/branding/make_icons.py` 必须存在。图标 / TV banner / 状态栏小图标由该脚本用 PIL
+`[0/9]` 另钉死本轮结构：`ROW_GAP_DP`（设置页行间距）、`LaunchPolicy.shouldAutoGuard`
+（首页冷启动自动守护），以及 `tools/branding/make_icons.py` 必须存在；v1.0.2 起对打赏改为
+**反向门禁**——Manifest / 设置页不得出现 `DonateActivity` 或打赏文案，两张收款码 PNG 不得存在。
+图标 / TV banner / 状态栏小图标由该脚本用 PIL
 确定性生成（5 档 launcher 密度 + 640×360 banner），改设计只需改脚本后重跑，无需设计工具。
 `[9/9]` 打包源码前会先删除旧的 `PoHW-src.zip`（`zip -r` 对已存在归档只做增量更新，
 旧条目不会消失），并硬性拒绝 `__pycache__` / `*.pyc` 混进交付源码包。
@@ -122,14 +123,14 @@ OTHER 池路由字面量、SQL 双份参数绑定、池保持兜底常量、`has
 每轮题数边界和停止令牌。`[6/9]` 检查编译输入中的版本与错题库文案。
 
 覆盖安装保持签名一致：**`[8/9]` 会用 `apksigner verify --print-certs` 读取成品 APK 的
-证书 SHA-256，与 1.0.2 发布证书 `42cbf6a7009e9817cab64aa2b180d76fb722bd7e4e53c8ee4ef8a3a08ca07cdb` 比对，不一致直接 `exit 1`**。
+证书 SHA-256，与 1.0.3 发布证书 `42cbf6a7009e9817cab64aa2b180d76fb722bd7e4e53c8ee4ef8a3a08ca07cdb` 比对，不一致直接 `exit 1`**。
 `apksigner verify --verbose` 只证明签名有效、不证明签名者相同，所以这层门禁不能省。
 仅本地实验构建可显式 `POHW_ALLOW_DEV_SIGN=1` 跳过并接受醒目警告；
-正常发布必须使用与 1.0.2 相同的 keystore：
+正常发布必须使用与 1.0.3 相同的 keystore：
 
 ```bash
 JAVA_HOME=/path/to/jdk17 ANDROID_HOME=/path/to/sdk POHW_KEYSTORE=/path/to/release.keystore POHW_KEYSTORE_PASS=你的密码 bash app/build.sh
 ```
 
 不指定 `POHW_KEYSTORE` 时，脚本在 `.build/` 生成本地密钥。该目录未入库，应妥善保存；
-新设备重新生成密钥后签名会变化。1.0.1 的私钥未保留，无法直接覆盖旧版，详见 README 的升级说明。
+新设备重新生成密钥后签名会变化。上游 1.0.1 / 1.0.2 的私钥未保留，无法直接覆盖旧版，详见 README 的升级说明。

@@ -178,8 +178,8 @@ check("SubjectWeights.MAX_WEIGHT + 1" in raw_s,
       "UI weight cycle is driven by the same max weight")
 check("Subjects.norm(subject)" in _st and '"w" + s' in _st,
       "settings store persists all four normalized slots")
-check('android:versionCode="18"' in _mf, "manifest versionCode advances to 18")
-check('VERSION_CODE="18"' in b, "build script versionCode advances to 18")
+check('android:versionCode="20"' in _mf, "manifest versionCode advances to 20")
+check('VERSION_CODE="20"' in b, "build script versionCode advances to 20")
 check("SubjectWeights.java" in _run and "SubjectWeightsTest" in _run,
       "new weights class and JVM test are wired into the test runner")
 check("bank_distribution_check.py" in b,
@@ -227,8 +227,6 @@ check("题库不可用" in raw_s, "settings note explains the bank-unavailable c
 
 
 # ---- 设置页行间距 / 四个默认开关 / APP 启动即守护 ----
-_donate = strip_comments(read(os.path.join(
-    ROOT, "app/src/com/jager/tvquiz/DonateActivity.java")))
 _launch = strip_comments(read(os.path.join(
     ROOT, "app/src/com/jager/tvquiz/LaunchPolicy.java")))
 _res = os.path.join(ROOT, "app/res")
@@ -253,25 +251,17 @@ check("public static boolean shouldAutoGuard" in _launch,
       "launch policy is pure Java and unit-testable")
 check("LaunchPolicy.java" in _run, "launch policy is compiled into JVM tests")
 
-# ---- 打赏入口：位置、页面、渠道切换、静态资源 ----
-check('"打赏作者 · 请喝一杯咖啡"' in raw_s, "donate entry is in parent settings")
-check("DonateActivity.class" in raw_s, "donate entry opens the donate page")
-check(raw_s.find('"检查题库更新"') < raw_s.find('"打赏作者'),
-      "donate entry follows the bank-update option in the online card")
-check('android:name=".DonateActivity"' in _mf,
-      "donate activity is declared in the manifest")
-check("R.drawable.donate_wechat" in _donate
-      and "R.drawable.donate_alipay" in _donate,
-      "both QR resources are referenced by the donate page")
-check("KEYCODE_DPAD_LEFT" in _donate and "KEYCODE_DPAD_RIGHT" in _donate,
-      "DPAD left/right switch the donation channel")
-check("微信支付" in _donate and "支付宝" in _donate,
-      "both payment tabs are labelled")
-check("ImageView.ScaleType.FIT_CENTER" in _donate,
-      "QR keeps its aspect ratio so it stays scannable on TV")
-check(os.path.isfile(os.path.join(_res, "drawable-nodpi/donate_wechat.png"))
-      and os.path.isfile(os.path.join(_res, "drawable-nodpi/donate_alipay.png")),
-      "both QR PNGs are packaged as APK resources")
+# ---- v1.0.2：打赏功能已整体移除，防止被误加回 ----
+check("DonateActivity" not in raw_s and "打赏" not in raw_s,
+      "no donation entry or copy remains in parent settings")
+check('android:name=".DonateActivity"' not in _mf,
+      "donate activity is not declared in the manifest")
+check(not os.path.isfile(os.path.join(
+    ROOT, "app/src/com/jager/tvquiz/DonateActivity.java")),
+      "donate activity source is deleted")
+check(not any(os.path.isfile(os.path.join(_res, "drawable-nodpi", f)) for f in
+              ("donate_wechat.png", "donate_alipay.png")),
+      "no donation QR PNGs are packaged as APK resources")
 
 # ---- 品牌资源：可复现生成器 + 多密度图标 + TV banner ----
 check(os.path.isfile(os.path.join(ROOT, "tools/branding/make_icons.py")),
@@ -286,9 +276,7 @@ check("make_icons.py" in b, "build gate verifies the branding generator")
 
 
 # ---- 题库说明位置：离线说明必须紧跟「检查题库更新」按钮 ----
-check(raw_s.find('"检查题库更新"') < raw_s.find('"默认完全离线：')
-      < raw_s.find('"打赏作者 · 请喝一杯咖啡"')
-      < raw_s.find('"如果觉得 PoHW 好用'),
-      "offline note sits directly under the bank-update button, before the donate entry")
+check(raw_s.find('"检查题库更新"') < raw_s.find('"默认完全离线：'),
+      "offline note sits directly under the bank-update button")
 
 print("LAYOUT_CONTRACT_OK total=%d" % TOTAL)

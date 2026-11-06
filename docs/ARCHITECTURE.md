@@ -1,5 +1,8 @@
 # 架构与关键决策
 
+> v1.0.2 起移除了打赏功能：`DonateActivity`、家长设置里的入口与两张静态收款码资源都已删除，
+> 构建门禁与布局契约改为反向断言（禁止它们被加回）。上游历史版本说明见 `docs/UPSTREAM-*.md`。
+
 ## 组件职责
 
 | 类 | 职责 |
@@ -9,7 +12,6 @@
 | `QuizOverlayService` | 前台服务：1 秒计时、WindowManager 全屏遮罩、答题判定、可选在线同步 |
 | `BootReceiver` | 开机恢复守护（校验 action + 守护开关 + 悬浮窗授权） |
 | `LaunchPolicy` | 「启动即守护」冷启动判定（纯 Java，可 JVM 单测） |
-| `DonateActivity` | 打赏页：微信 / 支付宝收款码 + 遥控器左右切渠道，纯静态资源、无支付 SDK |
 | `QuizDb` | 内置 SQLite：版本化原子复制、只读、按学科池本地随机抽题、池保持跨年级兜底 + 全库最后兜底；用题目真实 `subject` 反推标签 |
 | `QuizEngine` | 三层出题链：DB -> 在线缓存题 -> 参数化生成器；委托 `SubjectWeights` 做四槽轮盘赌 |
 | `BankRepository` | 可选在线题库：版本比对、分块下载、SHA-256、原子缓存 |

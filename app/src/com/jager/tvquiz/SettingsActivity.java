@@ -431,16 +431,8 @@ public class SettingsActivity extends Activity {
                         });
             }
         });
-        // 离线说明紧跟「检查题库更新」：它解释的是在线源开关本身，不要和打赏说明挤在一起。
+        // 离线说明紧跟「检查题库更新」：它解释的是在线源开关本身。
         note(online, "默认完全离线：内置全量 K12 题库，不联网；只有填写在线源地址后才会按周期联网。");
-        // 打赏入口：纯静态收款码，不联网、不含支付 SDK。
-        addButton(online, "打赏作者 · 请喝一杯咖啡", 0xFFB5762E, new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                startActivity(new Intent(SettingsActivity.this, DonateActivity.class));
-            }
-        });
-        note(online, "如果觉得 PoHW 好用，可以请作者喝一杯咖啡。完全自愿、不影响任何功能；"
-                + "点开后可用遥控器左右键切换微信支付 / 支付宝收款码，用手机扫码即可。");
 
         root.addView(sv, Ui.fill(1));
 

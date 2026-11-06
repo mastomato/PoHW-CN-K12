@@ -2,9 +2,9 @@
 
 基于 [jagerzhang/PoHW](https://github.com/jagerzhang/PoHW) 的 Android TV 答题守护应用。守护服务会按家长设置的间隔在其他应用上方显示答题页；题库离线可用，支持小学和初中多个学科。
 
-**当前版本：1.0.2（versionCode 18）** · [下载 APK](https://github.com/mastomato/PoHW-CN-K12/releases/download/v1.0.2-cn.1/PoHW-v1.0.2.apk) · [查看 Release](https://github.com/mastomato/PoHW-CN-K12/releases/tag/v1.0.2-cn.1)
+**当前版本：1.0.3（versionCode 20）** · [下载 APK](https://github.com/mastomato/PoHW-CN-K12/releases/download/v1.0.3-cn.1/PoHW-v1.0.3.apk) · [查看 Release](https://github.com/mastomato/PoHW-CN-K12/releases/tag/v1.0.3-cn.1)
 
-## 1.0.2 的答题方式
+## 1.0.3 的答题方式
 
 - 答题页改用与[知行答题 TV](https://github.com/mastomato/zhixing-tv-quiz)一致的浅色卡片、紫色焦点和竖排选项；应用图标与电视横幅也统一为“书本 + 守护盾牌”。
 - 遥控器方向键移动选项，确定键立即提交。答对显示绿色反馈并在短暂提示后自动进入下一题；答错显示正确答案和解析，按确定进入下一题。
@@ -16,7 +16,7 @@
 
 内置 5,735 道四选一题，覆盖 1–9 年级，含 498 道奥数思维题。题库来源包括原项目的 810 道真实题、[cn-math-taxonomy](https://github.com/giszh86/cn-math-taxonomy) 的 3,314 道题，以及程序生成题。按学期筛选时，未标注学期与全学年题目仍可参与；题量不足时先放宽学期，再保留学科范围抽题。
 
-1.0.2 修正了一道英语题的两个等价干扰项，并更新了离线题库版本戳。详细来源和许可见 [NOTICE.md](NOTICE.md) 与 [docs/QUESTION_BANK.md](docs/QUESTION_BANK.md)。题库中包含 CC BY-NC 4.0 内容，**仅供非商业使用**。
+1.0.3 修正了一道英语题的两个等价干扰项，并更新了离线题库版本戳。详细来源和许可见 [NOTICE.md](NOTICE.md) 与 [docs/QUESTION_BANK.md](docs/QUESTION_BANK.md)。题库中包含 CC BY-NC 4.0 内容，**仅供非商业使用**。
 
 ## 安装与升级
 
@@ -24,10 +24,10 @@
 
 ```bash
 adb connect <电视IP>:5555
-adb install -r PoHW-v1.0.2.apk
+adb install -r PoHW-v1.0.3.apk
 ```
 
-**从 1.0.1 升级需注意签名变化。**旧版 1.0.1 的签名证书为 `e5816bdd…212286c`，其私钥不在本仓库或当前构建环境中。1.0.2 使用新的发布证书 `42cbf6a7…07cdb`，Android 不允许直接覆盖安装。先卸载 1.0.1 再安装 1.0.2；卸载会清除旧版的家长设置、答题统计和错题库。1.0.2 之后如继续使用同一发布密钥，可直接覆盖升级。
+**从 1.0.1 或上游发布的 1.0.2 升级需注意签名变化。**旧版签名证书为 `e5816bdd…212286c`，其私钥不在本仓库或当前构建环境中。1.0.3 使用新的发布证书 `42cbf6a7…07cdb`，Android 不允许直接覆盖安装。必须先卸载旧版；卸载会清除旧版的家长设置、答题统计和错题库。之后如继续使用同一发布密钥，可直接覆盖升级。
 
 装好后在“家长设置”选择年级、学期、出题频率和每轮题数，设置家长密码，并按需开启开机自启。不同电视的厂商自启动权限仍需在系统设置中允许。
 
