@@ -136,8 +136,7 @@ public class WrongBookActivity extends Activity {
         l.addView(row, Ui.fixed(this, 56));
 
         l.addView(Ui.tv(this,
-                "遥控器方向键选中按钮后按确定；同一题答错 " + AnswerPolicy.WRONG_LIMIT
-                        + " 次会自动换题并记录到这里。",
+                "遥控器方向键选中按钮后按确定；答错会立即记录到这里。",
                 13, Ui.MUTED), Ui.fixed(this, 24));
         return l;
     }
@@ -213,8 +212,7 @@ public class WrongBookActivity extends Activity {
         if (items.isEmpty()) {
             title.setText("共 " + Math.max(totalCount, 0) + " 题 · 错题库为空");
             detail.setText("还没有错题。" + NL + NL
-                    + "答题时同一题累计答错 " + AnswerPolicy.WRONG_LIMIT
-                    + " 次会自动换一道新题，并把原题记入错题库。" + NL
+                    + "答题时选错会显示正确答案和解析，并把原题记入错题库。" + NL
                     + "这里可以随时查看正确答案、解析和你当时选错的选项。");
             setNavEnabled(false, false, false, false);
             return;

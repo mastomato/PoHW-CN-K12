@@ -6,7 +6,7 @@ import com.jager.tvquiz.LaunchPolicy;
 import com.jager.tvquiz.SettingsStore;
 import com.jager.tvquiz.Subjects;
 
-/** v6 regression: wrong-answer swap policy, boot policy, per-subject editions, playback flags. */
+/** v6 regression: answer validation, boot policy, per-subject editions, playback flags. */
 public class FeatureV6Test {
 
     static int pass = 0, fail = 0;
@@ -17,19 +17,12 @@ public class FeatureV6Test {
     }
 
     public static void main(String[] args) {
-        // ---------- AnswerPolicy: 答错 2 次换题 ----------
+        // ---------- AnswerPolicy: 答案下标验证 ----------
         ok("A1 correct index accepted", AnswerPolicy.isCorrect(2, 2));
         ok("A2 wrong index rejected", !AnswerPolicy.isCorrect(1, 2));
         ok("A3 out-of-range pick rejected",
                 !AnswerPolicy.isCorrect(-1, 2) && !AnswerPolicy.isCorrect(4, 2));
         ok("A4 invalid answerIndex rejected", !AnswerPolicy.isCorrect(2, 9));
-        ok("A5 WRONG_LIMIT is 2", AnswerPolicy.WRONG_LIMIT == 2);
-        ok("A6 no swap at 0 wrong", !AnswerPolicy.shouldSwap(0));
-        ok("A7 no swap at 1 wrong", !AnswerPolicy.shouldSwap(1));
-        ok("A8 swap at 2 wrong", AnswerPolicy.shouldSwap(2));
-        ok("A9 swap at 3 wrong", AnswerPolicy.shouldSwap(3));
-        ok("A10 hint shows one left", AnswerPolicy.wrongHint(1).contains("再错 1 次"));
-        ok("A11 swapped hint mentions swap", AnswerPolicy.wrongHint(2).contains("换一题"));
 
         // ---------- BootPolicy: 开机自启白名单与开关组合 ----------
         ok("B1 BOOT_COMPLETED accepted", BootPolicy.isBootAction(BootPolicy.BOOT));

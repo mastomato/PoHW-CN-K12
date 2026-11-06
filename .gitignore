@@ -1,6 +1,10 @@
 # 构建产物与本地密钥
 .build/
+.branding_preview.png
+build/
 dist/*.idsig
+dist/PoHW-v*.apk
+dist/PoHW-src.zip
 *.keystore
 *.jks
 *.p12

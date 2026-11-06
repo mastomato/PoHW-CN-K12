@@ -1,7 +1,8 @@
 package com.jager.tvquiz;
 
 import android.content.Context;
-import android.util.TypedValue;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -9,239 +10,319 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
-/**
- * 全屏答题遮罩。
- *
- * 遥控器输入不依赖 Android 的 View 焦点树：所有按键在窗口根视图的
- * dispatchKeyEvent 中由 KeyRouter 自主路由（方向键移动高亮、确定键/数字键提交），
- * 答题状态统一放在 QuizFlow（纯 Java，可单测）。老实现复用同一 View 实例反复
- * addView/removeView、答对时焦点残留在「继续观看」按钮上，第二次挂载后选项就选不中。
- *
- * QuizFlow 的推进由 QuizOverlayService.answer() 负责（判题需要题目的 answerIndex），
- * 本视图只负责渲染与按键语义翻译；bind() 会在每次换题时 reset()。
- *
- * 注意：按键仍要求遮罩窗口本身拿到窗口焦点。Service 侧做了有限次焦点重试与
- * 窗口重建，但 Android 没有强制夺取窗口焦点的公开 API，真机连续弹题仍需实测。
- */
+/** 与知行答题 TV 统一的全屏答题页；窗口根视图接管遥控器，避免覆盖层焦点丢失。 */
 public final class OverlayQuizView {
-
     public interface Listener {
         void onAnswer(int index);
-        void onContinue();
-        /** 遮罩窗口焦点变化：true=重新拿到遥控器按键，false=被通知栏/系统对话框抢走。 */
+        void onNext();
+        void onNewRound();
+        void onExit();
         void onWindowFocus(boolean hasFocus);
     }
 
+    private static final int BG = 0xFFF7F8FC;
+    private static final int INK = 0xFF222339;
+    private static final int MUTED = 0xFF85879D;
+    private static final int PURPLE = 0xFF7058DE;
+    private static final int PURPLE_DARK = 0xFF5840C1;
+    private static final int GREEN = 0xFF2AA377;
+    private static final int RED = 0xFFC25252;
+    private static final int WHITE = 0xFFFFFFFF;
+    private static final int QUESTION = 0;
+    private static final int COMPLETE = 1;
+
     private static final class Root extends FrameLayout {
         private OverlayQuizView owner;
-
         Root(Context c) { super(c); }
-
         @Override public boolean dispatchKeyEvent(KeyEvent e) {
             if (owner != null && owner.onKey(e)) return true;
             return super.dispatchKeyEvent(e);
         }
-
-        @Override public void onWindowFocusChanged(boolean hasWindowFocus) {
-            super.onWindowFocusChanged(hasWindowFocus);
-            if (owner != null) owner.onWindowFocus(hasWindowFocus);
+        @Override public void onWindowFocusChanged(boolean hasFocus) {
+            super.onWindowFocusChanged(hasFocus);
+            if (owner != null) owner.onWindowFocus(hasFocus);
         }
     }
 
     private final Context c;
     private final Root root;
-    private final TextView topic, text, result, explain, footer;
-    private final Button[] opts = new Button[4];
-    private final Button cont;
     private final Listener listener;
     private final QuizFlow flow = new QuizFlow();
+    private final Button[] opts = new Button[4];
+    private final TextView topic, question, feedback, explain, sideProgress;
+    private final Button next;
+    private Runnable autoNext;
+    private int phase = QUESTION;
+    private int picked = -1;
+    private int correctIndex = -1;
+    private boolean transitionPending;
+    private boolean exitPending;
 
     public OverlayQuizView(Context ctx, Listener l) {
         c = ctx;
         listener = l;
-
-        root = new Root(ctx);
+        root = new Root(c);
         root.owner = this;
-        root.setBackgroundColor(0xF30B1018);
-        // 根视图自己持有窗口焦点；子按钮不参与焦点树，避免 add/remove 后焦点残留。
         root.setFocusable(true);
         root.setFocusableInTouchMode(true);
+        root.setBackgroundColor(BG);
+
+        LinearLayout shell = Ui.hbox(c);
+        shell.setGravity(Gravity.TOP);
+        root.addView(shell, new FrameLayout.LayoutParams(-1, -1));
+
+        LinearLayout side = Ui.vbox(c);
+        side.setBackgroundColor(WHITE);
+        side.setPadding(dp(18), dp(25), dp(12), dp(16));
+        shell.addView(side, new LinearLayout.LayoutParams(dp(170), -1));
+        side.addView(label("知行答题", 22, INK, true));
+        side.addView(label("电视答题练习", 12, MUTED, false));
+        TextView active = label("答题守护", 17, PURPLE, true);
+        LinearLayout.LayoutParams activeLp = new LinearLayout.LayoutParams(-1, -2);
+        activeLp.topMargin = dp(24);
+        side.addView(active, activeLp);
+        sideProgress = label("", 13, MUTED, false);
+        sideProgress.setLineSpacing(dp(5), 1f);
+        LinearLayout.LayoutParams progressLp = new LinearLayout.LayoutParams(-1, -2);
+        progressLp.topMargin = dp(30);
+        side.addView(sideProgress, progressLp);
+
+        ScrollView scroll = new ScrollView(c);
+        scroll.setFillViewport(true);
+        scroll.setClipToPadding(false);
+        shell.addView(scroll, new LinearLayout.LayoutParams(0, -1, 1));
+        LinearLayout body = Ui.vbox(c);
+        body.setPadding(dp(28), dp(20), dp(28), dp(24));
+        scroll.addView(body);
+        body.addView(label("知行  /  答题守护", 13, MUTED, false));
+        TextView heading = label("答题练习", 27, INK, true);
+        LinearLayout.LayoutParams headingLp = new LinearLayout.LayoutParams(-1, -2);
+        headingLp.topMargin = dp(8);
+        body.addView(heading, headingLp);
+        body.addView(label("方向键选择，按确定直接作答；按返回键退出。", 14, MUTED, false));
 
         LinearLayout card = Ui.vbox(c);
-        card.setBackground(Ui.round(Ui.CARD, 18, c));
-        FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        cp.setMargins(Ui.dp(c, 88), Ui.dp(c, 22), Ui.dp(c, 88), Ui.dp(c, 22));
-        card.setLayoutParams(cp);
-        card.setPadding(Ui.dp(c, 26), Ui.dp(c, 12), Ui.dp(c, 26), Ui.dp(c, 8));
+        card.setPadding(dp(18), dp(16), dp(18), dp(18));
+        card.setBackground(shape(WHITE, 0));
+        LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(-1, -2);
+        cardLp.topMargin = dp(16);
+        body.addView(card, cardLp);
 
-        topic = Ui.tv(c, "", 16, Ui.BLUE);
-        topic.setLineSpacing(0, 1.15f);
-        topic.setPadding(0, Ui.dp(c, 2), 0, Ui.dp(c, 6));
-        card.addView(topic, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        topic = label("", 14, PURPLE, true);
+        card.addView(topic);
+        question = label("", 23, INK, true);
+        question.setPadding(0, dp(14), 0, dp(11));
+        card.addView(question, new LinearLayout.LayoutParams(-1, -2));
 
-        text = Ui.tv(c, "", 30, Ui.TEXT);
-        text.setGravity(Gravity.CENTER);
-        text.setPadding(Ui.dp(c, 20), 0, Ui.dp(c, 20), 0);
-        card.addView(text, Ui.fill(1));
-
-        LinearLayout grid = Ui.hbox(c);
-        grid.setBaselineAligned(false);
-        LinearLayout col1 = Ui.vbox(c), col2 = Ui.vbox(c);
-        for (int i = 0; i < 4; i++) {
-            final int idx = i;
-            Button b = Ui.button(c, "", Ui.BLUE_LIGHT, Ui.TEXT, 24);
+        for (int i = 0; i < opts.length; i++) {
+            final int choice = i;
+            Button b = Ui.button(c, "", 0xFFF7F7FB, INK, 18);
+            b.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
+            b.setMinHeight(dp(52));
+            b.setPadding(dp(16), dp(9), dp(16), dp(9));
             b.setFocusable(false);
             b.setFocusableInTouchMode(false);
             b.setOnClickListener(new View.OnClickListener() {
-                @Override public void onClick(View v) { submit(idx); }
+                @Override public void onClick(View v) { submit(choice); }
             });
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, 0, 1);
-            p.setMargins(Ui.dp(c, 8), Ui.dp(c, 8), Ui.dp(c, 8), Ui.dp(c, 8));
-            (i < 2 ? col1 : col2).addView(b, p);
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
+            p.topMargin = dp(6);
+            card.addView(b, p);
             opts[i] = b;
         }
-        LinearLayout.LayoutParams colLp = new LinearLayout.LayoutParams(0,
-                ViewGroup.LayoutParams.MATCH_PARENT, 1);
-        grid.addView(col1, colLp);
-        grid.addView(col2, colLp);
-        card.addView(grid, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(c, 186)));
 
-        result = Ui.tv(c, "", 21, Ui.GREEN);
-        card.addView(result, Ui.fixed(c, 34));
-        explain = Ui.tv(c, "", 15, 0xFF5F6B7F);
-        explain.setMinHeight(Ui.dp(c, 34));
-        card.addView(explain, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-
-        cont = Ui.button(c, "继续观看", Ui.GREEN, 0xFFFFFFFF, 20);
-        cont.setFocusable(false);
-        cont.setFocusableInTouchMode(false);
-        cont.setVisibility(View.INVISIBLE);
-        cont.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { requestContinue(); }
+        feedback = label("", 14, MUTED, false);
+        feedback.setPadding(0, dp(8), 0, dp(4));
+        card.addView(feedback, new LinearLayout.LayoutParams(-1, -2));
+        explain = label("", 14, MUTED, false);
+        explain.setLineSpacing(dp(3), 1f);
+        card.addView(explain, new LinearLayout.LayoutParams(-1, -2));
+        next = Ui.button(c, "下一题  →", PURPLE, WHITE, 16);
+        next.setFocusable(false);
+        next.setFocusableInTouchMode(false);
+        next.setBackground(shape(PURPLE, 0));
+        next.setVisibility(View.GONE);
+        next.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                if (phase == COMPLETE) requestNewRound();
+                else if (flow.isAnswered() && picked != correctIndex) requestNext();
+            }
         });
-        LinearLayout.LayoutParams nb = new LinearLayout.LayoutParams(Ui.dp(c, 240), Ui.dp(c, 50));
-        nb.gravity = Gravity.CENTER_HORIZONTAL;
-        card.addView(cont, nb);
+        LinearLayout.LayoutParams nextLp = new LinearLayout.LayoutParams(dp(220), dp(52));
+        nextLp.topMargin = dp(14);
+        card.addView(next, nextLp);
+    }
 
-        footer = Ui.tv(c,
-                "方向键选择 · 确定/数字键 1-4 作答 · 答错 " + AnswerPolicy.WRONG_LIMIT
-                        + " 次自动换题 · 返回键无效 · 答对才能继续",
-                14, Ui.MUTED);
-        card.addView(footer, Ui.fixed(c, 26));
+    private int dp(int value) { return Ui.dp(c, value); }
 
-        root.addView(card, cp);
-        paint();
+    private GradientDrawable shape(int fill, int stroke) {
+        GradientDrawable d = Ui.round(fill, 12, c);
+        if (stroke != 0) d.setStroke(dp(2), stroke);
+        return d;
+    }
+
+    private TextView label(String value, int size, int color, boolean bold) {
+        TextView t = Ui.tv(c, value, size, color, Gravity.CENTER_VERTICAL | Gravity.LEFT);
+        if (bold) t.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        return t;
     }
 
     public View view() { return root; }
-
-    /** 服务与本视图共用同一个状态机，避免两处状态不同步。 */
     public QuizFlow flow() { return flow; }
+    public boolean hasWindowFocus() { return root.hasWindowFocus(); }
+    public void focusFirst() { root.requestFocus(); paint(); }
 
-    /** addView 之后 post 调用，确保窗口已完成首次 attach/traversal。 */
-    public void focusFirst() {
-        root.requestFocus();
-        paint();
-    }
-
-    /** 窗口（重新）获得焦点时夺回根视图焦点、重绘高亮，并通知服务停止重试。 */
     public void onWindowFocus(boolean hasFocus) {
-        if (hasFocus) {
-            root.requestFocus();
-            paint();
-        }
+        if (hasFocus) focusFirst();
         if (listener != null) listener.onWindowFocus(hasFocus);
     }
 
-    /** 供服务的焦点重试任务判断是否已抢回窗口焦点。 */
-    public boolean hasWindowFocus() { return root.hasWindowFocus(); }
-
-    public void bind(QuizEngine.Question q, String meta) {
-        String src = "bank".equals(q.source) ? "在线题库" : "本地生成";
-        topic.setText("该答题啦  ·  " + q.topic + "  ·  " + src + "\n" + meta);
-        text.setText(q.text);
-        text.setTextSize(TypedValue.COMPLEX_UNIT_SP, QuizTextSizer.sp(q.text));
-        result.setText("");
-        explain.setText("");
-        cont.setVisibility(View.INVISIBLE);
-        // 换题必须整体重置状态机：累计答错次数、禁用选项、高亮、答对标志。
+    public void bind(QuizEngine.Question q, String meta, int number, int total) {
+        cancelPending();
+        phase = QUESTION;
+        transitionPending = false;
+        picked = -1;
+        correctIndex = -1;
         flow.reset();
+        sideProgress.setText("每轮 " + total + " 题\n\n当前第 " + number + " 题");
+        topic.setText(meta + "  ·  第 " + number + " / " + total + " 题");
+        question.setText(q.text == null ? "" : q.text);
+        question.setTextSize(Math.min(23, QuizTextSizer.sp(q.text)));
         for (int i = 0; i < 4; i++) {
-            opts[i].setText(q.options != null && i < q.options.length
-                    ? (q.options[i] == null ? "" : q.options[i]) : "");
+            String answer = q.options != null && i < q.options.length && q.options[i] != null
+                    ? q.options[i] : "";
+            opts[i].setText((char) ('A' + i) + "   " + answer);
+            opts[i].setVisibility(View.VISIBLE);
         }
-        paint();
-    }
-
-    /** 答错一次：flow.submit() 已在服务侧禁用该选项，这里只负责提示与重绘。 */
-    public void wrong(int idx, String msg) {
-        result.setTextColor(Ui.RED);
-        result.setText(msg);
+        feedback.setText("");
         explain.setText("");
+        next.setVisibility(View.GONE);
+        paint();
+        root.requestFocus();
+    }
+
+    public void correct(int answerIndex, String explanation) {
+        picked = flow.selected();
+        correctIndex = answerIndex;
+        feedback.setTextColor(GREEN);
+        feedback.setText("答对了 ✓  即将进入下一题…");
+        explain.setText(explanation == null ? "" : explanation);
+        next.setVisibility(View.GONE);
+        paint();
+        autoNext = new Runnable() {
+            @Override public void run() {
+                autoNext = null;
+                requestNext();
+            }
+        };
+        root.postDelayed(autoNext, 850);
+    }
+
+    public void wrong(int answerIndex, String answerText, String explanation) {
+        picked = flow.selected();
+        correctIndex = answerIndex;
+        feedback.setTextColor(RED);
+        feedback.setText("正确答案：" + (char) ('A' + answerIndex) + "  " + answerText);
+        explain.setText(explanation == null ? "" : explanation);
+        next.setText("下一题  →");
+        next.setVisibility(View.VISIBLE);
         paint();
     }
 
-    /** 换题后给一句提示；bind() 已重绘，此处不再禁用任何选项。 */
-    public void hint(String msg) {
-        result.setTextColor(Ui.AMBER);
-        result.setText(msg);
-        explain.setText("");
-        paint();
+    public void showRoundComplete(int correct, int total) {
+        cancelPending();
+        phase = COMPLETE;
+        transitionPending = false;
+        topic.setText("本轮完成");
+        question.setText("答对 " + correct + " / " + total + " 题");
+        question.setTextSize(30);
+        sideProgress.setText("每轮 " + total + " 题\n\n本轮已完成");
+        for (Button b : opts) b.setVisibility(View.GONE);
+        feedback.setTextColor(PURPLE);
+        feedback.setText("正确率 " + (total == 0 ? 0 : correct * 100 / total) + "%");
+        explain.setText("按确定开始下一轮，按返回退出答题。");
+        next.setText("开始下一轮  →");
+        next.setVisibility(View.VISIBLE);
+        root.requestFocus();
     }
 
-    public void correct(String msg, String exp) {
-        result.setTextColor(Ui.GREEN);
-        result.setText(msg);
-        explain.setText(exp);
-        cont.setVisibility(View.VISIBLE);
-        paint();
+    public void cancelPending() {
+        if (autoNext != null) root.removeCallbacks(autoNext);
+        autoNext = null;
     }
-
-    // ---------- 键盘路由：把 Android KeyEvent 翻成语义后交给 KeyRouter ----------
 
     private boolean onKey(KeyEvent e) {
         int[] value = new int[1];
-        int semantic = semanticOf(e.getKeyCode(), value);
-        KeyRouter.Decision d = KeyRouter.decide(
-                e.getAction(), e.getRepeatCount(), semantic, value[0]);
+        KeyRouter.Decision d = KeyRouter.decide(e.getAction(), e.getRepeatCount(),
+                semanticOf(e.getKeyCode(), value), value[0]);
         switch (d.action) {
-            case KeyRouter.ACT_PASS_THROUGH:
-                return false; // 音量键 DOWN/UP 都交回系统
+            case KeyRouter.ACT_PASS_THROUGH: return false;
+            case KeyRouter.ACT_BACK: requestExit(); return true;
             case KeyRouter.ACT_CONFIRM:
-                if (flow.isAnswered()) requestContinue();
-                else submit(flow.selected());
+                if (phase == COMPLETE) requestNewRound();
+                else if (flow.isAnswered()) {
+                    if (picked != correctIndex) requestNext();
+                } else submit(flow.selected());
                 return true;
             case KeyRouter.ACT_ANSWER:
-                if (!flow.isAnswered()) submit(d.value);
+                if (phase == QUESTION && !flow.isAnswered()) submit(d.value);
                 return true;
             case KeyRouter.ACT_MOVE:
-                if (!flow.isAnswered()) flow.move(d.value);
-                paint();
+                if (phase == QUESTION && !flow.isAnswered()) { flow.move(d.value); paint(); }
                 return true;
-            case KeyRouter.ACT_CONSUME:
-            default:
-                return true;
+            default: return true;
         }
     }
 
-    /**
-     * 答对后的「继续」统一 post 到消息队列：不能在 KeyEvent / click 分发栈内
-     * 同步 removeViewImmediate()，否则会 detach 当前 ViewRootImpl，导致状态错乱。
-     */
-    private void requestContinue() {
-        if (!flow.isAnswered()) return;
+    private void requestNext() {
+        if (transitionPending) return;
+        transitionPending = true;
         root.post(new Runnable() {
-            @Override public void run() {
-                if (flow.isAnswered() && listener != null) listener.onContinue();
-            }
+            @Override public void run() { if (listener != null) listener.onNext(); }
         });
+    }
+
+    private void requestNewRound() {
+        if (transitionPending) return;
+        transitionPending = true;
+        root.post(new Runnable() {
+            @Override public void run() { if (listener != null) listener.onNewRound(); }
+        });
+    }
+
+    private void requestExit() {
+        if (exitPending) return;
+        exitPending = true;
+        transitionPending = true;
+        cancelPending();
+        root.post(new Runnable() {
+            @Override public void run() { if (listener != null) listener.onExit(); }
+        });
+    }
+
+    private void submit(int idx) {
+        if (phase != QUESTION || flow.isAnswered() || idx < 0 || idx > 3) return;
+        if (listener != null) listener.onAnswer(idx);
+    }
+
+    private void paint() {
+        if (phase != QUESTION) return;
+        for (int i = 0; i < opts.length; i++) {
+            Button b = opts[i];
+            boolean answered = flow.isAnswered();
+            b.setEnabled(!answered);
+            int fill = 0xFFF7F7FB, stroke = 0xFFE9E8F0, color = INK;
+            if (answered && i == correctIndex) { fill = 0xFFDDF5E9; color = GREEN; stroke = 0; }
+            else if (answered && i == picked) { fill = 0xFFFFE7E7; color = RED; stroke = 0; }
+            else if (!answered && i == flow.selected()) {
+                fill = 0xFFEBE6FF; stroke = PURPLE; color = PURPLE_DARK;
+            }
+            b.setBackground(shape(fill, stroke));
+            b.setTextColor(color);
+        }
     }
 
     private static int semanticOf(int k, int[] value) {
@@ -260,40 +341,11 @@ public final class OverlayQuizView {
         if (k == KeyEvent.KEYCODE_DPAD_UP)    { value[0] = 2; return KeyRouter.SEM_MOVE; }
         if (k == KeyEvent.KEYCODE_DPAD_DOWN)  { value[0] = 3; return KeyRouter.SEM_MOVE; }
         if (k >= KeyEvent.KEYCODE_1 && k <= KeyEvent.KEYCODE_4) {
-            value[0] = k - KeyEvent.KEYCODE_1;
-            return KeyRouter.SEM_ANSWER;
+            value[0] = k - KeyEvent.KEYCODE_1; return KeyRouter.SEM_ANSWER;
         }
         if (k >= KeyEvent.KEYCODE_NUMPAD_1 && k <= KeyEvent.KEYCODE_NUMPAD_4) {
-            value[0] = k - KeyEvent.KEYCODE_NUMPAD_1;
-            return KeyRouter.SEM_ANSWER;
+            value[0] = k - KeyEvent.KEYCODE_NUMPAD_1; return KeyRouter.SEM_ANSWER;
         }
         return KeyRouter.SEM_OTHER;
-    }
-
-    private void submit(int idx) {
-        if (flow.isAnswered() || idx < 0 || idx > 3 || flow.isDisabled(idx)) return;
-        listener.onAnswer(idx);
-    }
-
-    /** 手动绘制高亮，不使用 OnFocusChangeListener。 */
-    private void paint() {
-        boolean answered = flow.isAnswered();
-        for (int i = 0; i < 4; i++) {
-            Button b = opts[i];
-            b.setEnabled(!flow.isDisabled(i) && !answered);
-            if (flow.isDisabled(i)) {
-                b.setBackground(Ui.round(0xFFE3CFD4, 10, c));
-                b.setTextColor(0xFF9A7C86);
-            } else if (answered) {
-                b.setBackground(Ui.round(0xFFDDE6F2, 10, c));
-                b.setTextColor(0xFF6A7891);
-            } else if (i == flow.selected()) {
-                b.setBackground(Ui.round(Ui.BLUE, 10, c));
-                b.setTextColor(0xFFFFFFFF);
-            } else {
-                b.setBackground(Ui.round(Ui.BLUE_LIGHT, 10, c));
-                b.setTextColor(Ui.TEXT);
-            }
-        }
     }
 }

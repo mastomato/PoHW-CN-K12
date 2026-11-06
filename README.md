@@ -1,95 +1,52 @@
-# PoHW · 中文 K12 电视答题守护（增强版）
+# 知行答题守护 · PoHW-CN-K12
 
-在 [jagerzhang/PoHW](https://github.com/jagerzhang/PoHW) 基础上做的改造版：给家里的电视加一道「答对才能继续看」的关卡，题库换成了真实可答的中小学题目，并新增**按学期出题**。
+基于 [jagerzhang/PoHW](https://github.com/jagerzhang/PoHW) 的 Android TV 答题守护应用。守护服务会按家长设置的间隔在其他应用上方显示答题页；题库离线可用，支持小学和初中多个学科。
 
-原版是 MIT 协议的 Android TV 答题守护：到点弹出全屏题目，答对解锁一段时间，跨应用悬浮、离线可用。这个仓库保留全部原有能力，只改了题库与设置。
+**当前版本：1.0.2（versionCode 18）** · [下载 APK](https://github.com/mastomato/PoHW-CN-K12/releases/download/v1.0.2-cn.1/PoHW-v1.0.2.apk) · [查看 Release](https://github.com/mastomato/PoHW-CN-K12/releases/tag/v1.0.2-cn.1)
 
-**直接下载安装**：[PoHW-cnmt-term-v1.0.1.apk](https://github.com/mastomato/PoHW-CN-K12/releases/download/v1.0.1-cn.1/PoHW-cnmt-term-v1.0.1.apk)（1.79 MB，支持 Android 5.0+，自签名）· [Release 说明](https://github.com/mastomato/PoHW-CN-K12/releases/tag/v1.0.1-cn.1)
+## 1.0.2 的答题方式
 
-![控制台](screenshots/console.png)
+- 答题页改用与[知行答题 TV](https://github.com/mastomato/zhixing-tv-quiz)一致的浅色卡片、紫色焦点和竖排选项；应用图标与电视横幅也统一为“书本 + 守护盾牌”。
+- 遥控器方向键移动选项，确定键立即提交。答对显示绿色反馈并在短暂提示后自动进入下一题；答错显示正确答案和解析，按确定进入下一题。
+- 家长设置新增“每轮题数”，可选 1、3、5、10、20 题，默认 10 题。答错也计入本轮题数，并写入错题库。
+- 一轮完成后留在答题页显示成绩。按确定开始下一轮；**只有主动按返回键才退出答题页**。退出后守护倒计时重新开始。
+- 答对、答错和一轮完成有不同音效。视频暂停与退出后恢复播放仍按家长设置执行。
 
-## 相对原版的改动
+## 题库
 
-### 1. 新增「学期」选择（上册 / 下册）
+内置 5,735 道四选一题，覆盖 1–9 年级，含 498 道奥数思维题。题库来源包括原项目的 810 道真实题、[cn-math-taxonomy](https://github.com/giszh86/cn-math-taxonomy) 的 3,314 道题，以及程序生成题。按学期筛选时，未标注学期与全学年题目仍可参与；题量不足时先放宽学期，再保留学科范围抽题。
 
-原版的 `questions` 表里其实有 `term` 列（上/下/全），但代码从未读取它，抽题 SQL 只有 `grade + subject`。本版把它接上了：
+1.0.2 修正了一道英语题的两个等价干扰项，并更新了离线题库版本戳。详细来源和许可见 [NOTICE.md](NOTICE.md) 与 [docs/QUESTION_BANK.md](docs/QUESTION_BANK.md)。题库中包含 CC BY-NC 4.0 内容，**仅供非商业使用**。
 
-- 设置页 → `01 出题基础` → 新增「学期」一行，可循环切换 `全学年（上下册）/ 上册 / 下册`
-- 选上册时抽题谓词追加 `AND (term=? OR term IS NULL OR term='' OR term='全')`
-- 兜底顺序：年级+学科+学期 → 学科+学期 → **放宽学期、保住年级与学科** → 学科 → 全库。某个学期题量不足时不会乱跳到别的年级
-- 不分学期的题（口算、科学常识）统一标为「全」，两个学期都会出
+## 安装与升级
 
-![设置页](screenshots/settings-term.png)
-
-### 2. 题库重做：5129 → 5735 题
-
-原版内置题库里 **4319 道（84%）是「纲目定位」元数据题**，形如「知识点『写作：面积计算』是哪个年级段的内容？」，答案只是年级标签，而且源数据还串了学科（语文下面挂着「写作：面积计算」）。真正能答的只有 810 道。
-
-本版的处理：
-
-| 来源 | 题数 | 说明 |
-|---|---|---|
-| 原库真实题 | 810 | 剔除全部 4319 道元数据题 |
-| [cn-math-taxonomy](https://github.com/giszh86/cn-math-taxonomy) | 3314 | 四选一选择题，剔除高中题、依赖课文原文的阅读题、带图题、重复选项题 |
-| 参数化生成（数学/科学） | 1113 | 口算、单位换算、科学常识，答案由程序计算 |
-| **奥数思维（本仓库新增）** | 498 | 20 个专题，答案由公式算出 |
-| **合计** | **5735** | 覆盖 1–9 年级，数/语/英/理/科学 |
-
-奥数思维专题：找规律、数线段、和差、和倍、差倍、鸡兔同笼、植树、周期、方阵、盈亏、年龄、平均数、抽屉原理、相遇、追及、工程、浓度、等差数列、容斥原理、余数。
-
-每题都满足电视弹窗的硬约束：**题干 ≤ 60 字、无图、四选一、带一行解析**。干扰项取常见错解（差一、忘除以 2、少加 1、按原溶液算），不是随机数。
-
-```
-笼子里鸡和兔共 23 个头、78 只脚，兔有多少只？
-A. 7   B. 16   C. 17   D. 23        解析：兔=(78−2×23)÷2=16
-```
-
-### 3. 零 Gradle 本地构建链
-
-原仓库的 `app/build.sh` 需要 JDK 17 + Android SDK。本仓库补了 `tools/local/build_apk.sh`，用 aapt2 → javac → d8 → zipalign → apksigner 全流程出包，并记录了踩过的坑（见 [docs/BUILD-LOCAL.md](docs/BUILD-LOCAL.md)）。
-
-## 安装
+需要 Android 5.0+，并授予“显示在其他应用上层”权限。电视开启网络 ADB 后可执行：
 
 ```bash
-# 已 root 或开启 ADB 调试的电视/盒子
 adb connect <电视IP>:5555
-adb install -r dist/PoHW-cnmt-term-v1.0.1.apk
+adb install -r PoHW-v1.0.2.apk
 ```
 
-APK 是**自签名**的（证书与官方不同），如果装过原版必须先卸载：
+**从 1.0.1 升级需注意签名变化。**旧版 1.0.1 的签名证书为 `e5816bdd…212286c`，其私钥不在本仓库或当前构建环境中。1.0.2 使用新的发布证书 `42cbf6a7…07cdb`，Android 不允许直接覆盖安装。先卸载 1.0.1 再安装 1.0.2；卸载会清除旧版的家长设置、答题统计和错题库。1.0.2 之后如继续使用同一发布密钥，可直接覆盖升级。
+
+装好后在“家长设置”选择年级、学期、出题频率和每轮题数，设置家长密码，并按需开启开机自启。不同电视的厂商自启动权限仍需在系统设置中允许。
+
+## 从源码构建
+
+需要 JDK 17、Android SDK Platform 33/34、Build Tools 34 及 Python 3。执行：
 
 ```bash
-adb uninstall com.jager.tvquiz
-```
-
-装好后：
-
-1. 打开 App，首次进入家长设置需设置 4–8 位密码
-2. 「所在年级」「学期」按孩子实际情况选
-3. 「出题频率」= 答对后能看多久，两者是同一个值
-4. 需要开机就生效的话，打开「开机自启」，并给 App 悬浮窗权限
-
-## 自己构建
-
-```bash
-# 需要 JDK 17 + Android SDK（build-tools 34 / platform-33）
 export JAVA_HOME=/path/to/jdk17
-export ANDROID_HOME=$HOME/Library/Android/sdk
-bash tools/local/build_apk.sh
+export ANDROID_HOME=/path/to/android-sdk
+bash app/build.sh
 ```
 
-题库重建需要原始题库与 cn-math-taxonomy 的 JSON（体积原因未入库），详见 `tools/local/` 下的脚本头注释。
+脚本运行静态布局检查、题库校验、JVM 行为检查，再编译、签名和验证 APK。发布签名密钥不入库；使用自己的密钥时设置 `POHW_KEYSTORE` 与 `POHW_KEYSTORE_PASS`。图标和横幅由 `tools/branding/make_icons.py` 生成，生成时需要 Pillow。
 
-## 已知限制
+## 限制
 
-- **学期只作用于内置题库**。`05 在线题库源` 的题包格式没有学期字段，配了在线源后那部分不按学期筛。
-- 初中语文只有 30 题（cn-math-taxonomy 的语文只覆盖小学 1–6 年级），一年级英语也只有 30 题（该库英语从三年级起）。
-- 奥数题混在数学池里出，题目标签带「思维·xxx」前缀；没有独立开关。
-- 「暂停视频 / 恢复播放」是 best-effort（音频焦点 + 媒体键），不保证所有播放器响应。
+- 在线题库源不带学期字段，学期筛选仅影响内置离线题库。
+- 初中语文和一年级英语题量较少，筛选过窄时会按题库兜底规则放宽范围。
+- “暂停视频 / 恢复播放”依靠音频焦点与媒体键请求，不保证所有播放器都响应。
 
-## 许可
-
-- 本仓库代码沿用上游 **MIT**，见 [LICENSE](LICENSE)。
-- 题库数据涉及第三方来源与各自许可，**务必先读 [NOTICE.md](NOTICE.md)**。其中 cn-math-taxonomy 部分为 **CC BY-NC 4.0（禁止商业使用）**。
-
-上游项目：[jagerzhang/PoHW](https://github.com/jagerzhang/PoHW)（MIT）。本仓库与原作者的立场无关，问题请提到本仓库。
+应用代码沿用 MIT 许可；第三方题库有单独许可。参见 [LICENSE](LICENSE) 与 [NOTICE.md](NOTICE.md)。

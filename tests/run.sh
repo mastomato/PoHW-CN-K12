@@ -22,6 +22,7 @@ mkdir -p "$OUT"
   app/src/com/jager/tvquiz/LaunchPolicy.java \
   app/src/com/jager/tvquiz/KeyRouter.java \
   app/src/com/jager/tvquiz/QuizFlow.java \
+  app/src/com/jager/tvquiz/QuizRound.java \
   app/src/com/jager/tvquiz/PinGate.java \
   app/src/com/jager/tvquiz/SettingsStore.java \
   app/src/com/jager/tvquiz/QuizTextSizer.java \

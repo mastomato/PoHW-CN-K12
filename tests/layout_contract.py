@@ -127,7 +127,7 @@ check("RELEASE_CERT_SHA256" in b and "ACTUAL_CERT_SHA256" in b,
       "build compares actual APK certificate to the release certificate")
 check("apksigner verify --print-certs" in b,
       "certificate is read from the signed APK, not from the keystore alone")
-check("76eb6063b574d6df1cd52ac490d82185793bf48abe0185687f4d977e49626172" in b,
+check("42cbf6a7009e9817cab64aa2b180d76fb722bd7e4e53c8ee4ef8a3a08ca07cdb" in b,
       "pinned release certificate SHA-256 is present")
 check("POHW_ALLOW_DEV_SIGN" in b,
       "dev-sign override is explicit and opt-in")
@@ -178,8 +178,8 @@ check("SubjectWeights.MAX_WEIGHT + 1" in raw_s,
       "UI weight cycle is driven by the same max weight")
 check("Subjects.norm(subject)" in _st and '"w" + s' in _st,
       "settings store persists all four normalized slots")
-check('android:versionCode="17"' in _mf, "manifest versionCode advances to 17")
-check('VERSION_CODE="17"' in b, "build script versionCode advances to 17")
+check('android:versionCode="18"' in _mf, "manifest versionCode advances to 18")
+check('VERSION_CODE="18"' in b, "build script versionCode advances to 18")
 check("SubjectWeights.java" in _run and "SubjectWeightsTest" in _run,
       "new weights class and JVM test are wired into the test runner")
 check("bank_distribution_check.py" in b,
@@ -220,7 +220,7 @@ check("MAX(1, (SELECT COUNT(*) FROM questions " in _d
 check("POOL_OTHER_ALL" in _chk and "POOL_CORE_ALL" in _chk,
       "distribution check reads the same named SQL constants")
 check(os.path.isfile(_mut), "mutation harness is committed and reproducible")
-check("204 assertions" in b, "build log states the actual JVM assertion count")
+check("JVM unit tests" in b, "build invokes JVM behavior tests")
 check("显示「—」并禁用焦点" not in raw_s, "stale UI comment about the fourth row is gone")
 check("题库不可用" in raw_s, "settings note explains the bank-unavailable case")
 

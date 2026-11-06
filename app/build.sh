@@ -7,15 +7,24 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP="$ROOT/app"
 BUILD="$ROOT/.build"
 DIST="$ROOT/dist"
-VERSION_NAME="1.0.1"
-VERSION_CODE="17"
+VERSION_NAME="1.0.2"
+VERSION_CODE="18"
 APK_NAME="PoHW-v${VERSION_NAME}.apk"
 
 : "${JAVA_HOME:=/opt/jdk17}"
 : "${ANDROID_HOME:=$HOME/Android/Sdk}"
+if [ -d "$ANDROID_HOME/build-tools/34.0.0" ]; then
+  BUILD_TOOLS="$ANDROID_HOME/build-tools/34.0.0"
+else
+  BUILD_TOOLS="$ANDROID_HOME/build-tools/android-14"
+fi
 export JAVA_HOME ANDROID_HOME
-export PATH="$JAVA_HOME/bin:$ANDROID_HOME/build-tools/34.0.0:$PATH"
-ANDROID_JAR="$ANDROID_HOME/platforms/android-34/android.jar"
+export PATH="$JAVA_HOME/bin:$BUILD_TOOLS:$PATH"
+if [ -f "$ANDROID_HOME/platforms/android-34/android.jar" ]; then
+  ANDROID_JAR="$ANDROID_HOME/platforms/android-34/android.jar"
+else
+  ANDROID_JAR="$ANDROID_HOME/platforms/android-13/android.jar"
+fi
 
 for tool in aapt2 javac d8 zipalign apksigner keytool; do
   command -v "$tool" >/dev/null || { echo "MISSING TOOL: $tool"; exit 1; }
@@ -109,7 +118,8 @@ grep -q 'onQuizWindowFocus' "$SVC"
 grep -q 'updateViewLayout' "$SVC"
 grep -q 'rebuildOverlay' "$SVC"
 grep -q 'onWindowFocusChanged' "$VIEW"
-grep -q 'requestContinue' "$VIEW"               # 不在按键分发栈内同步摘窗口
+grep -q 'requestExit' "$VIEW"                   # 返回键不在按键分发栈内同步摘窗口
+grep -q 'QuizRound' "$SVC"                     # 家长设置的每轮题数进入守护服务
 # P1: 一次性 STOP 令牌，客户端 boolean 不再是授权依据
 grep -q 'issueStopToken' "$SVC"
 grep -q 'consumeStopToken' "$SVC"
@@ -125,7 +135,7 @@ grep -q 'QuickBootReceiver' "$APP/AndroidManifest.xml"
 grep -q 'BehaviorV601Test' tests/run.sh
 grep -q 'KeyRouter.java' tests/run.sh
 grep -q 'QuizFlow.java' tests/run.sh
-for f in Hashes Subjects AnswerPolicy BootPolicy BootSettings MediaPauseController          WrongBook WrongBookActivity OverlayQuizView KeyRouter QuizFlow; do
+for f in Hashes Subjects AnswerPolicy BootPolicy BootSettings MediaPauseController          WrongBook WrongBookActivity OverlayQuizView KeyRouter QuizFlow QuizRound; do
   [ -f "$APP/src/com/jager/tvquiz/$f.java" ] || { echo "MISSING source: $f.java"; exit 1; }
 done
 if grep -rq -E 'v4[.]1 控制台|DeviceAdmin|startLockTask|DELETE_PACKAGES|pack_hh_|huohua|HH_API_KEY' "$APP/src"; then
@@ -144,7 +154,7 @@ fi
 echo "[1/9] verify built-in question bank"
 python3 tools/quizbank/verify.py "$APP/assets/quiz.db"
 
-echo "[2/9] JVM unit tests (204 assertions incl. behaviour regressions)"
+echo "[2/9] JVM unit tests"
 bash tests/run.sh
 
 STAMP="$(date +%s)"
@@ -181,8 +191,9 @@ d8 --lib "$ANDROID_JAR" --min-api 21 --output "$BUILD/dexout" @"$BUILD/classes.t
 if grep -aq 'v4.1 控制台' "$BUILD/dexout/classes.dex"; then
   echo 'OLD HARDCODED TITLE IN DEX'; exit 1
 fi
-grep -aq '应用版本' "$BUILD/dexout/classes.dex"
-grep -aq '错题库' "$BUILD/dexout/classes.dex"
+# DEX 字符串采用 MUTF-8，不能用 grep 直接查中文；检查编译输入中的 UI 文案。
+grep -q '应用版本' "$MAIN"
+grep -q '错题库' "$MAIN"
 
 echo "[7/9] package + zipalign"
 cp "$BUILD/dexout/classes.dex" "$BUILD/out/classes.dex"
@@ -218,8 +229,8 @@ apksigner verify --verbose "$DIST/$APK_NAME"
 
 # 发布证书连续性门禁：apksigner verify 只证明签名有效，不证明签名者相同。
 # 指纹不一致时 adb install -r 会因 signature mismatch 拒绝覆盖安装，
-# 因此默认强制比对已发布 v1.0.0 / v1.0.1 的证书；仅本地实验构建可显式跳过。
-RELEASE_CERT_SHA256="76eb6063b574d6df1cd52ac490d82185793bf48abe0185687f4d977e49626172"
+# v1.0.2 起使用新的本地发布密钥；旧 v1.0.1 密钥未保留，不能直接覆盖旧包。
+RELEASE_CERT_SHA256="42cbf6a7009e9817cab64aa2b180d76fb722bd7e4e53c8ee4ef8a3a08ca07cdb"
 ACTUAL_CERT_SHA256="$(apksigner verify --print-certs "$DIST/$APK_NAME"   | sed -n 's/.*SHA-256 digest: //p' | tr -d '[:space:]')"
 if [ "${POHW_ALLOW_DEV_SIGN:-0}" = "1" ]; then
   echo "WARNING: dev-sign override; certificate NOT checked: $ACTUAL_CERT_SHA256"
@@ -230,10 +241,12 @@ elif [ "$ACTUAL_CERT_SHA256" != "$RELEASE_CERT_SHA256" ]; then
 fi
 
 echo "[9/9] artifact checks"
-aapt dump badging "$DIST/$APK_NAME" 2>/dev/null | grep -q "versionName='$VERSION_NAME'"
-aapt dump badging "$DIST/$APK_NAME" 2>/dev/null | grep -q "versionCode='$VERSION_CODE'"
-unzip -l "$DIST/$APK_NAME" | grep -q 'assets/quiz.db'
-unzip -l "$DIST/$APK_NAME" | grep -q 'assets/quiz.db.version'
+aapt dump badging "$DIST/$APK_NAME" > "$BUILD/out/badging.txt" 2>/dev/null
+grep -q "versionName='$VERSION_NAME'" "$BUILD/out/badging.txt"
+grep -q "versionCode='$VERSION_CODE'" "$BUILD/out/badging.txt"
+unzip -l "$DIST/$APK_NAME" > "$BUILD/out/apk-files.txt"
+grep -q 'assets/quiz.db' "$BUILD/out/apk-files.txt"
+grep -q 'assets/quiz.db.version' "$BUILD/out/apk-files.txt"
 # zip -r 对已存在的归档只做增量更新，旧条目不会消失；先删旧包再重建。
 rm -f "$DIST/PoHW-src.zip"
 (cd "$ROOT" && zip -q -r "$DIST/PoHW-src.zip" \
@@ -242,12 +255,14 @@ rm -f "$DIST/PoHW-src.zip"
   tests docs tools -x '*/__pycache__/*' '*.pyc')
 
 # 源码包只允许源码与文档：Python 字节码和缓存目录属于本机运行产物，不得外发。
-if unzip -l "$DIST/PoHW-src.zip" | grep -qE '__pycache__|\.pyc$'; then
+if unzip -l "$DIST/PoHW-src.zip" > "$BUILD/out/source-files.txt" && \
+    grep -qE '__pycache__|\.pyc$' "$BUILD/out/source-files.txt"; then
   echo "FORBIDDEN: python bytecode leaked into the source archive"
   exit 1
 fi
 
 echo "=== RESULT ==="
 ls -lh "$DIST/$APK_NAME" "$DIST/PoHW-src.zip"
-sha256sum "$DIST/$APK_NAME"
+if command -v sha256sum >/dev/null; then sha256sum "$DIST/$APK_NAME";
+else shasum -a 256 "$DIST/$APK_NAME"; fi
 echo "BUILD_OK version=$VERSION_NAME code=$VERSION_CODE"

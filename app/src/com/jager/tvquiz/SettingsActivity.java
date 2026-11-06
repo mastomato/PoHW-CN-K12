@@ -52,7 +52,7 @@ public class SettingsActivity extends Activity {
     private TextView gateTitle, gateMask, gateMsg, gateState, bankStatus, pinState;
     private Button firstGateBtn;
     private EditText urlEdit;
-    private Button rowGrade, rowTerm, rowInterval, rowScope, rowSync;
+    private Button rowGrade, rowTerm, rowInterval, rowRoundCount, rowScope, rowSync;
     /** 学科设置复合行：左按钮切教材版本，右按钮切题目配比。 */
     private Button[] rowEd = new Button[Subjects.COUNT];
     private Button[] rowWt = new Button[Subjects.COUNT];
@@ -310,6 +310,13 @@ public class SettingsActivity extends Activity {
                 refreshRows();
             }
         });
+        rowRoundCount = addRow(quiz, "每轮题数", new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                int i = (st.roundCountIndex() + 1) % SettingsStore.ROUND_COUNTS.length;
+                st.roundCount(SettingsStore.ROUND_COUNTS[i]);
+                refreshRows();
+            }
+        });
         rowScope = addRow(quiz, "出题范围", new View.OnClickListener() {
             @Override public void onClick(View v) { st.allSubjects(!st.allSubjects()); refreshRows(); }
         });
@@ -320,6 +327,7 @@ public class SettingsActivity extends Activity {
             }
         });
         note(quiz, "点击右侧取值即可循环切换，离开设置页时统一保存。");
+        note(quiz, "每轮完成后显示成绩；按确定键开始下一轮，只有主动按返回键才退出答题。");
         note(quiz, "学期只影响内置题库的抽题范围：选「上册 / 下册」时优先出该学期与全学年通用的题；"
                 + "题库未标注学期的题始终参与，该学期题量不足时自动放宽到同年级同学科。");
 
@@ -363,7 +371,7 @@ public class SettingsActivity extends Activity {
                 startActivity(new Intent(SettingsActivity.this, WrongBookActivity.class));
             }
         });
-        note(wrong, "同一题答错 " + AnswerPolicy.WRONG_LIMIT + " 次自动换题并记录。");
+        note(wrong, "答错立即显示正确答案与解析，并记录到错题库；按确定进入下一题。");
 
         // ---- 05 在线题库源 ----
         LinearLayout online = addCard(col, "05  在线题库源（可选 · 需自行配置）");
@@ -593,6 +601,7 @@ public class SettingsActivity extends Activity {
         rowGrade.setText(st.gradeLabel());
         rowTerm.setText(st.termLabel());
         rowInterval.setText(intervalLabel());
+        rowRoundCount.setText(st.roundCount() + " 题");
         rowScope.setText(st.allSubjects() ? "全学科（含物理/历史等）" : "仅数 / 语 / 英");
         rowSync.setText(SettingsStore.SYNC_LABELS[st.syncIndex()]);
         for (int s = 0; s < Subjects.COUNT; s++) {

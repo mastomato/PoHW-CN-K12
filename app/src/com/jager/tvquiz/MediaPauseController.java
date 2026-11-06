@@ -71,7 +71,7 @@ public final class MediaPauseController {
         }
     }
 
-    /** 答对并点击「继续观看」后调用；是否尝试恢复由家长设置决定。 */
+    /** 主动按返回退出答题后调用；是否尝试恢复由家长设置决定。 */
     public void quizFinished(SettingsStore st) {
         releaseInternal(st.pauseOnQuiz() && st.resumePlayback());
     }

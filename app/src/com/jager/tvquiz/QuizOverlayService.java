@@ -7,6 +7,8 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.PixelFormat;
+import android.media.AudioManager;
+import android.media.SoundPool;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -80,7 +82,10 @@ public class QuizOverlayService extends Service {
     private MediaPauseController media;
     private QuizEngine engine;
     private QuizEngine.Question current;
+    private final QuizRound round = new QuizRound();
     private SettingsStore st;
+    private SoundPool sounds;
+    private int correctSound, wrongSound, completeSound;
     private int interval = 30;
     private String lastKey = "";
     private long nextSyncAt = 0L;
@@ -93,7 +98,9 @@ public class QuizOverlayService extends Service {
 
     private final OverlayQuizView.Listener listener = new OverlayQuizView.Listener() {
         @Override public void onAnswer(int idx) { answer(idx); }
-        @Override public void onContinue() { finishQuiz(); }
+        @Override public void onNext() { nextQuestion(); }
+        @Override public void onNewRound() { newRound(); }
+        @Override public void onExit() { finishQuiz(); }
         @Override public void onWindowFocus(boolean hasFocus) { onQuizWindowFocus(hasFocus); }
     };
 
@@ -151,6 +158,12 @@ public class QuizOverlayService extends Service {
         st = new SettingsStore(this);
         wm = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
         media = new MediaPauseController(this);
+        try {
+            sounds = new SoundPool(3, AudioManager.STREAM_MUSIC, 0);
+            correctSound = sounds.load(this, R.raw.correct, 1);
+            wrongSound = sounds.load(this, R.raw.wrong, 1);
+            completeSound = sounds.load(this, R.raw.complete, 1);
+        } catch (RuntimeException e) { Log.w(TAG, "sound effects unavailable", e); }
     }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
@@ -205,6 +218,7 @@ public class QuizOverlayService extends Service {
         handler.removeCallbacks(focusCheck);
         hideQuiz();
         if (media != null) media.release();
+        if (sounds != null) { sounds.release(); sounds = null; }
         running = false;
         // 系统/force-stop 路径不会走 stopAll()，这里兜底显式退出前台。
         leaveForeground();
@@ -341,7 +355,7 @@ public class QuizOverlayService extends Service {
 
     private String metaFor(QuizEngine.Question q) {
         return st.gradeLabel() + " · " + Subjects.name(q.subject) + " "
-                + st.editionFor(q.subject) + " · 答对解锁 " + interval + " 秒";
+                + st.editionFor(q.subject);
     }
 
     private void showQuiz() {
@@ -354,11 +368,12 @@ public class QuizOverlayService extends Service {
             Toast.makeText(this, "题库暂不可用，稍后重试", Toast.LENGTH_SHORT).show();
             return;
         }
+        round.reset(st.roundCount());
         st.bumpQuestioned();
 
         // 不复用 View：反复 add/remove 会让窗口焦点状态不可预测。
         final OverlayQuizView view = new OverlayQuizView(this, listener);
-        view.bind(current, metaFor(current));
+        view.bind(current, metaFor(current), round.questionNumber(), round.total());
         quizView = view;
         focusRetry = 0;
         focusRecovering = false;
@@ -438,7 +453,7 @@ public class QuizOverlayService extends Service {
         }
     }
 
-    /** 判题与状态迁移统一交给 QuizFlow；bind() 在换题时 reset()，计数自动归零。 */
+    /** 答对自动进入下一题；答错展示解析，等待用户按确定继续。 */
     private void answer(int idx) {
         if (!quizShowing || current == null || quizView == null) return;
         QuizFlow flow = quizView.flow();
@@ -446,26 +461,51 @@ public class QuizOverlayService extends Service {
         if (outcome == QuizFlow.IGNORE) return;
         if (outcome == QuizFlow.CORRECT) {
             st.bumpCorrect();
-            quizView.correct("✓ 答对啦！继续观看 " + interval + " 秒", current.explain);
+            round.record(true);
+            play(correctSound);
+            quizView.correct(current.answerIndex, current.explain);
             return;
         }
         recordWrong(idx);
-        if (outcome == QuizFlow.SWAP) {
-            QuizEngine.Question next = drawFresh();
-            if (next != null && !next.key().equals(current.key())) {
-                current = next;
-                st.bumpQuestioned();
-                // 原地换题，窗口不 remove/add，避免再次触发窗口焦点问题
-                quizView.bind(current, metaFor(current));
-                quizView.hint(AnswerPolicy.wrongHint(AnswerPolicy.WRONG_LIMIT));
-                return;
-            }
-            // 题库只有一题时无法换题：重置状态机，避免永远卡在 SWAP / 全部选项禁用。
-            quizView.bind(current, metaFor(current));
-            quizView.hint("题库只有这一题，继续作答吧");
+        round.record(false);
+        play(wrongSound);
+        String answerText = current.options != null
+                && current.answerIndex >= 0 && current.answerIndex < current.options.length
+                ? current.options[current.answerIndex] : "";
+        quizView.wrong(current.answerIndex, answerText, current.explain);
+    }
+
+    private void play(int id) {
+        if (sounds != null && id != 0) sounds.play(id, .8f, .8f, 1, 0, 1f);
+    }
+
+    /** 题目切换只重绑内容，不摘下遮罩；本轮完成也留在答题页。 */
+    private void nextQuestion() {
+        if (!quizShowing || quizView == null) return;
+        if (round.complete()) {
+            play(completeSound);
+            quizView.showRoundComplete(round.correct(), round.total());
             return;
         }
-        quizView.wrong(idx, AnswerPolicy.wrongHint(flow.wrongAttempts()));
+        current = drawFresh();
+        if (current == null) {
+            quizView.showRoundComplete(round.correct(), round.answered());
+            return;
+        }
+        st.bumpQuestioned();
+        quizView.bind(current, metaFor(current), round.questionNumber(), round.total());
+    }
+
+    private void newRound() {
+        if (!quizShowing || quizView == null) return;
+        round.reset(st.roundCount());
+        current = drawFresh();
+        if (current == null) {
+            quizView.showRoundComplete(0, 0);
+            return;
+        }
+        st.bumpQuestioned();
+        quizView.bind(current, metaFor(current), round.questionNumber(), round.total());
     }
 
     private void recordWrong(int picked) {
@@ -486,6 +526,7 @@ public class QuizOverlayService extends Service {
         handler.removeCallbacks(focusCheck);
         focusRecovering = false;
         quizShowing = false;
+        if (quizView != null) quizView.cancelPending();
         // 不依赖 quizShowing 标志：标志异常时也兜底移除，避免残留窗口卡住卸载流程。
         removeOverlayNow();
     }

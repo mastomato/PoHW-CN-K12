@@ -2,60 +2,39 @@ package com.jager.tvquiz;
 
 /**
  * 单题答题状态机：纯 Java，零 Android 依赖。
- * 遮罩的高亮/禁用状态与服务的「答错 2 次换题」计数共用同一个实例，
- * 避免两处状态各写一份导致换题后禁用项没恢复、计数没归零。
+ * 每题只有一次作答：答对短暂反馈后自动下一题，答错显示解析并由用户继续。
  */
 public final class QuizFlow {
 
     public static final int IGNORE = 0;   // 已答对 / 选项已禁用 / 下标非法
-    public static final int KEEP = 1;     // 答错但还没到换题阈值
-    public static final int SWAP = 2;     // 已答错 2 次，需要换题
+    public static final int WRONG = 1;    // 答错，显示正确答案与解析
     public static final int CORRECT = 3;  // 答对
 
-    private int wrongAttempts = 0;
     private int selected = 0;
     private boolean answered = false;
-    private final boolean[] disabled = new boolean[4];
 
-    /** 新题（首次弹题或换题）时调用：计数、禁用项、高亮、答对状态全部归零。 */
+    /** 新题时清除上一题的选择和作答状态。 */
     public void reset() {
-        wrongAttempts = 0;
         selected = 0;
         answered = false;
-        for (int i = 0; i < 4; i++) disabled[i] = false;
     }
 
-    /** 提交一次作答，返回 IGNORE / KEEP / SWAP / CORRECT。 */
+    /** 提交一次作答，返回 IGNORE / WRONG / CORRECT。 */
     public int submit(int idx, int answerIndex) {
-        if (answered || idx < 0 || idx > 3 || disabled[idx]) return IGNORE;
+        if (answered || idx < 0 || idx > 3) return IGNORE;
         selected = idx;
+        answered = true;
         if (AnswerPolicy.isCorrect(idx, answerIndex)) {
-            answered = true;
             return CORRECT;
         }
-        wrongAttempts++;
-        disabled[idx] = true;
-        selectEnabled();
-        return AnswerPolicy.shouldSwap(wrongAttempts) ? SWAP : KEEP;
+        return WRONG;
     }
 
     public int move(int dir) {
-        selected = KeyRouter.move(selected, dir, disabled);
+        if (!answered) selected = KeyRouter.move(selected, dir, null);
         return selected;
     }
 
-    private void selectEnabled() {
-        if (!disabled[selected]) return;
-        for (int i = 0; i < 4; i++) {
-            if (!disabled[i]) { selected = i; return; }
-        }
-    }
-
     public int selected() { return selected; }
-    public int wrongAttempts() { return wrongAttempts; }
     public boolean isAnswered() { return answered; }
-    public boolean isDisabled(int i) { return i >= 0 && i < 4 && disabled[i]; }
-    public boolean[] disabledCopy() {
-        return new boolean[]{disabled[0], disabled[1], disabled[2], disabled[3]};
-    }
 }

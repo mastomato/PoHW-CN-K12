@@ -22,6 +22,7 @@ public final class SettingsStore implements PinGate.Store {
 
     public static final int[] INTERVALS = {15, 30, 60, 300, 600, 1200, 1800};
     public static final String[] INTERVAL_LABELS = {"15 秒(演示)", "30 秒(演示)", "1 分钟", "5 分钟", "10 分钟", "20 分钟", "30 分钟"};
+    public static final int[] ROUND_COUNTS = {1, 3, 5, 10, 20};
     public static final int[] SYNC_HOURS = {1, 6, 12, 24};
     public static final String[] SYNC_LABELS = {"每 1 小时", "每 6 小时", "每 12 小时", "每天"};
 
@@ -127,6 +128,23 @@ public final class SettingsStore implements PinGate.Store {
     public int intervalIndex() {
         for (int i = 0; i < INTERVALS.length; i++) if (INTERVALS[i] == intervalSec()) return i;
         return 1;
+    }
+
+    /** 每轮展示的题数；默认 10 题，与知行答题 TV 一致。 */
+    public int roundCount() {
+        int value = sp.getInt("roundCount", 10);
+        for (int count : ROUND_COUNTS) if (count == value) return value;
+        return 10;
+    }
+    public int roundCountIndex() {
+        for (int i = 0; i < ROUND_COUNTS.length; i++)
+            if (ROUND_COUNTS[i] == roundCount()) return i;
+        return 3;
+    }
+    public void roundCount(int value) {
+        boolean allowed = false;
+        for (int count : ROUND_COUNTS) if (count == value) allowed = true;
+        sp.edit().putInt("roundCount", allowed ? value : 10).commit();
     }
 
     public int syncIndex() { return clamp(sp.getInt("syncIdx", 1), 0, SYNC_HOURS.length - 1); }

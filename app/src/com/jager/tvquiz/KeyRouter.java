@@ -26,20 +26,13 @@ public final class KeyRouter {
     public static final int ACT_CONFIRM = 2;
     public static final int ACT_ANSWER = 3;
     public static final int ACT_MOVE = 4;
+    public static final int ACT_BACK = 5;
 
     public static final class Decision {
         public final int action;
         public final int value;
         Decision(int action, int value) { this.action = action; this.value = value; }
     }
-
-    /** 2x2 选项矩阵的方向键邻接表：LEFT / RIGHT / UP / DOWN。 */
-    private static final int[][] NEXT = {
-            {0, 1, 0, 1},
-            {2, 3, 2, 3},
-            {0, 0, 2, 2},
-            {1, 1, 3, 3},
-    };
 
     /**
      * @param keyAction  KeyEvent.getAction()
@@ -52,6 +45,10 @@ public final class KeyRouter {
         if (semantic == SEM_VOLUME) return new Decision(ACT_PASS_THROUGH, 0);
         // 非 DOWN 事件一律消费，答题期间不把按键透给底层应用
         if (keyAction != ACTION_DOWN) return new Decision(ACT_CONSUME, 0);
+        if (semantic == SEM_BACK) {
+            return repeatCount > 0 ? new Decision(ACT_CONSUME, 0)
+                    : new Decision(ACT_BACK, 0);
+        }
         if (semantic == SEM_CONFIRM) {
             return repeatCount > 0 ? new Decision(ACT_CONSUME, 0)
                     : new Decision(ACT_CONFIRM, 0);
@@ -67,21 +64,19 @@ public final class KeyRouter {
             return repeatCount > 0 ? new Decision(ACT_CONSUME, 0)
                     : new Decision(ACT_MOVE, value);
         }
-        // BACK / MEDIA / 其它：全部吞掉
+        // MEDIA / 其它：全部吞掉
         return new Decision(ACT_CONSUME, 0);
     }
 
-    /** 按方向移动高亮；若目标选项已被禁用，顺延到下一个可用选项。 */
+    /** 选项为竖排列表；上/左前移，下/右后移。 */
     public static int move(int selected, int dir, boolean[] disabled) {
         if (dir < 0 || dir > 3) return clampIndex(selected);
-        int target = NEXT[dir][clampIndex(selected)];
-        if (disabled != null && disabled[target]) {
-            for (int i = 1; i < 4; i++) {
-                int cand = (target + i) % 4;
-                if (!disabled[cand]) { target = cand; break; }
-            }
+        int start = clampIndex(selected);
+        int step = dir == 0 || dir == 2 ? -1 : 1;
+        for (int target = start + step; target >= 0 && target < 4; target += step) {
+            if (disabled == null || !disabled[target]) return target;
         }
-        return target;
+        return start;
     }
 
     public static int clampIndex(int i) { return (i < 0 || i > 3) ? 0 : i; }

@@ -22,6 +22,7 @@ curl -LO $BASE/platform-33_r02.zip      # 解压后目录名是 android-13（And
 
 ```bash
 export JAVA_HOME=/path/to/jdk-17
+export ANDROID_HOME=/path/to/android-sdk
 bash tools/local/build_apk.sh
 ```
 

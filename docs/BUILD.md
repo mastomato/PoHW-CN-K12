@@ -20,9 +20,9 @@ command -v aapt2 javac d8 zipalign apksigner   # 应全部能找到
 ## 2. 完整构建
 
 ```bash
-bash tests/run.sh                                   # 204 个 JVM 单测（8 组）
+bash tests/run.sh                                   # 201 个 JVM 检查（8 组）
 python3 tools/quizbank/verify.py app/assets/quiz.db  # 题库独立校验
-bash app/build.sh                                    # 产出 dist/PoHW-v1.0.1.apk
+bash app/build.sh                                    # 产出 dist/PoHW-v1.0.2.apk
 ```
 
 `app/build.sh` 的九个阶段：
@@ -31,7 +31,7 @@ bash app/build.sh                                    # 产出 dist/PoHW-v1.0.1.a
 | --- | --- |
 | 0 | 静态守卫：版本一致性、禁止写死 `v4.1 控制台`、禁止 DeviceAdmin / 防卸载 API、禁止第三方题包残留、`allowBackup=false` |
 | 1 | 题库校验：表结构、每题选项合法性、9 年级 × 3 科 × 40 次 + 全学科 360 次随机抽题、答案重算、篡改检测 |
-| 2 | JVM 单测 8 组 204 项：PinGate / QuizLayout / StopGuard / StopState / GradeScope / FeatureV6 / BehaviorV601 / SubjectWeights |
+| 2 | JVM 检查 8 组 201 项：PinGate / QuizLayout / StopGuard / StopState / GradeScope / FeatureV6 / BehaviorV601 / SubjectWeights |
 | 3 | `aapt2 compile --dir res` |
 | 4 | `aapt2 link`（生成 `R.java`，打包 `assets/`） |
 | 5 | `javac -source 8 -target 8 -classpath android.jar` |
@@ -118,19 +118,18 @@ OTHER 池路由字面量、SQL 双份参数绑定、池保持兜底常量、`has
 `[9/9]` 打包源码前会先删除旧的 `PoHW-src.zip`（`zip -r` 对已存在归档只做增量更新，
 旧条目不会消失），并硬性拒绝 `__pycache__` / `*.pyc` 混进交付源码包。
 
-`[2/9]` 现在跑 8 组共 **204** 个 JVM 单测（`BehaviorV601Test` 51 项与 `SubjectWeightsTest` 20 项，
-覆盖按键 ACTION_DOWN/UP 与 repeat、2x2 高亮邻接、答题状态机、令牌 TTL/重放/进程重启）；
-`[6/9]` 仍检查 dex 中含「错题库」字符串。
+`[2/9]` 跑 8 组共 **201** 项 JVM 检查，覆盖遥控器按键、竖排选项移动、单次判题、
+每轮题数边界和停止令牌。`[6/9]` 检查编译输入中的版本与错题库文案。
 
 覆盖安装保持签名一致：**`[8/9]` 会用 `apksigner verify --print-certs` 读取成品 APK 的
-证书 SHA-256，与钉死的 `76eb6063b574…26172` 比对，不一致直接 `exit 1`**。
+证书 SHA-256，与 1.0.2 发布证书 `42cbf6a7009e9817cab64aa2b180d76fb722bd7e4e53c8ee4ef8a3a08ca07cdb` 比对，不一致直接 `exit 1`**。
 `apksigner verify --verbose` 只证明签名有效、不证明签名者相同，所以这层门禁不能省。
 仅本地实验构建可显式 `POHW_ALLOW_DEV_SIGN=1` 跳过并接受醒目警告；
-正常发布必须显式指定与已发布版本相同的 keystore：
+正常发布必须使用与 1.0.2 相同的 keystore：
 
 ```bash
-JAVA_HOME=/opt/jdk17 ANDROID_HOME=/path/to/sdk POHW_KEYSTORE=/path/to/debug.keystore POHW_KEYSTORE_PASS=android bash app/build.sh
+JAVA_HOME=/path/to/jdk17 ANDROID_HOME=/path/to/sdk POHW_KEYSTORE=/path/to/release.keystore POHW_KEYSTORE_PASS=你的密码 bash app/build.sh
 ```
 
-不指定 `POHW_KEYSTORE` 时脚本会在 `.build/` 随机生成密钥，
-自行构建的 APK 与官方 Release 签名不同，覆盖安装前需先卸载。
+不指定 `POHW_KEYSTORE` 时，脚本在 `.build/` 生成本地密钥。该目录未入库，应妥善保存；
+新设备重新生成密钥后签名会变化。1.0.1 的私钥未保留，无法直接覆盖旧版，详见 README 的升级说明。

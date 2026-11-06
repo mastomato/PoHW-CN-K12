@@ -1,8 +1,8 @@
 import android.content.Context;
-import com.jager.tvquiz.AnswerPolicy;
 import com.jager.tvquiz.GuardPolicy;
 import com.jager.tvquiz.KeyRouter;
 import com.jager.tvquiz.QuizFlow;
+import com.jager.tvquiz.QuizRound;
 import com.jager.tvquiz.SettingsStore;
 
 /**
@@ -50,56 +50,70 @@ public class BehaviorV601Test {
                         && d(DOWN, 0, KeyRouter.SEM_MOVE, 2).value == 2);
         ok("K10 move long-press repeat suppressed",
                 d(DOWN, 1, KeyRouter.SEM_MOVE, 0).action == KeyRouter.ACT_CONSUME);
-        ok("K11 back consumed",
-                d(DOWN, 0, KeyRouter.SEM_BACK, 0).action == KeyRouter.ACT_CONSUME);
+        ok("K11 back exits quiz",
+                d(DOWN, 0, KeyRouter.SEM_BACK, 0).action == KeyRouter.ACT_BACK);
+        ok("K11b repeated back ignored",
+                d(DOWN, 1, KeyRouter.SEM_BACK, 0).action == KeyRouter.ACT_CONSUME);
         ok("K12 media keys consumed",
                 d(DOWN, 0, KeyRouter.SEM_MEDIA, 0).action == KeyRouter.ACT_CONSUME);
         ok("K13 unknown keys consumed",
                 d(DOWN, 0, KeyRouter.SEM_OTHER, 0).action == KeyRouter.ACT_CONSUME);
 
-        // ---------- KeyRouter: 2x2 高亮邻接表 ----------
-        // 布局 [0][2] / [1][3]；方向 0左 1右 2上 3下
-        ok("K14 left from top-right reaches top-left", KeyRouter.move(2, 0, null) == 0);
-        ok("K15 right from bottom-left reaches bottom-right", KeyRouter.move(1, 1, null) == 3);
-        ok("K16 up clamps at top row", KeyRouter.move(2, 2, null) == 2);
-        ok("K17 down from top-left reaches bottom-left", KeyRouter.move(0, 3, null) == 1);
+        // ---------- KeyRouter: 与竖排四选项一致的高亮顺序 ----------
+        ok("K14 left moves to previous", KeyRouter.move(2, 0, null) == 1);
+        ok("K15 right moves to next", KeyRouter.move(1, 1, null) == 2);
+        ok("K16 up clamps at first", KeyRouter.move(0, 2, null) == 0);
+        ok("K17 down moves to next", KeyRouter.move(0, 3, null) == 1);
         ok("K18 disabled target skipped",
-                KeyRouter.move(2, 0, new boolean[]{true, false, false, false}) == 1);
-        ok("K19 all-but-one disabled chooses the survivor",
+                KeyRouter.move(2, 0, new boolean[]{false, true, false, false}) == 0);
+        ok("K19 no available target keeps selection",
                 KeyRouter.move(0, 1, new boolean[]{false, true, true, true}) == 0);
         ok("K20 out-of-range dir clamps", KeyRouter.move(2, 99, null) == 2);
         ok("K21 invalid selected clamps", KeyRouter.move(77, 0, null) == 0);
 
-        // ---------- QuizFlow: 答错 2 次换题状态序列 ----------
+        // ---------- QuizFlow: 单次作答后锁定，换题重置 ----------
         QuizFlow f = new QuizFlow();
         f.reset();
         ok("F1 reset starts clean",
-                f.wrongAttempts() == 0 && f.selected() == 0 && !f.isAnswered()
-                        && !f.isDisabled(0) && !f.isDisabled(1)
-                        && !f.isDisabled(2) && !f.isDisabled(3));
-        ok("F2 wrong #1 -> KEEP", f.submit(0, 2) == QuizFlow.KEEP);
-        ok("F3 wrong #1 disables picked option", f.isDisabled(0) && f.wrongAttempts() == 1);
-        ok("F4 selection moves to an enabled option", f.selected() != 0 && !f.isDisabled(f.selected()));
-        ok("F5 disabled option cannot be resubmitted", f.submit(0, 2) == QuizFlow.IGNORE);
-        ok("F6 wrong #2 -> SWAP", f.submit(1, 2) == QuizFlow.SWAP);
-        ok("F7 wrong count reaches limit", f.wrongAttempts() == AnswerPolicy.WRONG_LIMIT);
-        ok("F8 both wrong options disabled", f.isDisabled(0) && f.isDisabled(1));
+                f.selected() == 0 && !f.isAnswered());
+        ok("F2 wrong -> WRONG", f.submit(0, 2) == QuizFlow.WRONG);
+        ok("F3 wrong locks this question", f.isAnswered() && f.selected() == 0);
+        ok("F4 answer cannot be submitted twice", f.submit(2, 2) == QuizFlow.IGNORE);
+        ok("F5 move after answer keeps selection", f.move(1) == 0);
         f.reset();
-        ok("F9 reset after swap clears all state",
-                f.wrongAttempts() == 0 && !f.isAnswered()
-                        && !f.isDisabled(0) && !f.isDisabled(1));
-        ok("F10 correct -> CORRECT", f.submit(2, 2) == QuizFlow.CORRECT);
-        ok("F11 answered flag set", f.isAnswered());
-        ok("F12 submit after correct ignored", f.submit(0, 0) == QuizFlow.IGNORE);
-        ok("F13 move still callable but no crash after answer", f.move(1) >= 0 && f.move(1) <= 3);
+        ok("F6 reset enables next question", !f.isAnswered() && f.selected() == 0);
+        ok("F7 correct -> CORRECT", f.submit(2, 2) == QuizFlow.CORRECT);
+        ok("F8 correct locks this question", f.isAnswered());
+        ok("F9 submit after correct ignored", f.submit(0, 0) == QuizFlow.IGNORE);
         QuizFlow f2 = new QuizFlow();
-        ok("F14 illegal index ignored",
+        ok("F10 illegal index ignored",
                 f2.submit(-1, 0) == QuizFlow.IGNORE && f2.submit(4, 0) == QuizFlow.IGNORE);
-        ok("F15 invalid answerIndex never correct", f2.submit(1, 99) == QuizFlow.KEEP);
+        ok("F11 invalid answerIndex never correct", f2.submit(1, 99) == QuizFlow.WRONG);
+
+        // ---------- QuizRound: 题数边界及完成后不继续累计 ----------
+        QuizRound round = new QuizRound();
+        round.reset(3);
+        ok("R1 first question number", round.questionNumber() == 1 && !round.complete());
+        round.record(true);
+        round.record(false);
+        ok("R2 wrong answer still counts as one question",
+                round.answered() == 2 && round.correct() == 1 && round.questionNumber() == 3);
+        round.record(true);
+        round.record(true);
+        ok("R3 round stops at configured count",
+                round.complete() && round.answered() == 3 && round.correct() == 2);
+        round.reset(5);
+        ok("R4 next round starts clean", !round.complete() && round.total() == 5
+                && round.answered() == 0 && round.correct() == 0);
 
         // ---------- SettingsStore: 一次性 STOP 令牌 ----------
         Context.resetAll();
         SettingsStore st = new SettingsStore(new Context());
+        ok("S1 default ten questions", st.roundCount() == 10);
+        st.roundCount(3);
+        ok("S2 parent-selected count persists", new SettingsStore(new Context()).roundCount() == 3);
+        st.roundCount(7);
+        ok("S3 unsupported count falls back", st.roundCount() == 10);
         ok("T1 no token -> stop not verified", !st.consumeStopToken(null));
         ok("T2 empty token -> stop not verified", !st.consumeStopToken(""));
         String t = st.issueStopToken();
