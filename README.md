@@ -4,7 +4,9 @@
 
 原版是 MIT 协议的 Android TV 答题守护：到点弹出全屏题目，答对解锁一段时间，跨应用悬浮、离线可用。这个仓库保留全部原有能力，只改了题库与设置。
 
-**直接下载安装**：[PoHW-cnmt-term-v1.0.1.apk](https://github.com/mastomato/PoHW-CN-K12/releases/download/v1.0.1-cn.1/PoHW-cnmt-term-v1.0.1.apk)（1.79 MB，支持 Android 5.0+，自签名）· [Release 说明](https://github.com/mastomato/PoHW-CN-K12/releases/tag/v1.0.1-cn.1)
+**直接下载安装**：[最新 Release](https://github.com/mastomato/PoHW-CN-K12/releases/latest) 里的 `PoHW-cnmt-term-v1.0.2.apk`（支持 Android 5.0+，自签名，与旧版同一证书可直接覆盖升级）。
+
+> **v1.0.2**：按家里使用习惯移除了「打赏作者」入口、打赏页与两张收款码图片（纯 UI 删减，不影响题库、学期选择、守护逻辑）。
 
 ![控制台](screenshots/console.png)
 
@@ -53,7 +55,7 @@ A. 7   B. 16   C. 17   D. 23        解析：兔=(78−2×23)÷2=16
 ```bash
 # 已 root 或开启 ADB 调试的电视/盒子
 adb connect <电视IP>:5555
-adb install -r dist/PoHW-cnmt-term-v1.0.1.apk
+adb install -r dist/PoHW-cnmt-term-v1.0.2.apk
 ```
 
 APK 是**自签名**的（证书与官方不同），如果装过原版必须先卸载：

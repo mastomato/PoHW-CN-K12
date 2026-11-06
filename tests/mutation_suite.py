@@ -27,12 +27,11 @@ W = os.path.join(SRC, "SubjectWeights.java")
 B = os.path.join(ROOT, "app/build.sh")
 MF = os.path.join(ROOT, "app/AndroidManifest.xml")
 C = os.path.join(ROOT, "tests/layout_contract.py")
-DO = os.path.join(SRC, "DonateActivity.java")
 LP = os.path.join(SRC, "LaunchPolicy.java")
 CHK = os.path.join(ROOT, "tests/bank_distribution_check.py")
 BK_DIR = tempfile.mkdtemp(prefix="pohw_mut_bk_")
 BK = {}
-for p in (M, S, E, D, O, ST, W, DO, LP, B, MF, C, CHK):
+for p in (M, S, E, D, O, ST, W, LP, B, MF, C, CHK):
     BK[p] = os.path.join(BK_DIR, os.path.basename(p) + ".bk")
     shutil.copyfile(p, BK[p])
 ORIG = {p: hashlib.sha256(open(p, "rb").read()).hexdigest() for p in BK}
@@ -132,7 +131,7 @@ MUTATIONS = [
     ("O", "service stops passing the fourth weight",
      lambda: replace(O, "st.weight(Subjects.OTHER)", "0"), False, True, False),
     ("P", "versionCode rolled back",
-     lambda: replace(B, 'VERSION_CODE="17"', 'VERSION_CODE="16"'), False, True, False),
+     lambda: replace(B, 'VERSION_CODE="19"', 'VERSION_CODE="18"'), False, True, False),
     ("Q", "OTHER routing disabled",
      lambda: replace(D, "boolean other = s == Subjects.OTHER && allSubjects;", "boolean other = false;"), True, True, False),
     ("R", "single WHERE binding",
@@ -155,14 +154,13 @@ MUTATIONS = [
     ("Z", "home no longer delegates to LaunchPolicy",
      lambda: replace(M, "LaunchPolicy.shouldAutoGuard",
                      "LaunchPolicy.alwaysGuard"), True, True, False),
-    ("AA", "donate activity removed from manifest",
-     lambda: replace(MF, 'android:name=".DonateActivity"',
-                     'android:name=".NoDonate"'), False, True, False),
-    ("AB", "DPAD channel switching removed",
-     lambda: replace(DO, "KEYCODE_DPAD_LEFT", "KEYCODE_DPAD_DOWN"), False, True, False),
-    ("AC", "alipay QR resource dropped",
-     lambda: replace(DO, "R.drawable.donate_alipay",
-                     "R.drawable.donate_wechat"), True, True, False),
+    ("AA", "donate activity reintroduced in the manifest",
+     lambda: replace(MF, 'android:name=".WrongBookActivity"',
+                     'android:name=".DonateActivity"'), False, True, False),
+    ("AB", "donate entry reintroduced in parent settings",
+     lambda: replace(S, 'note(online, "默认完全离线：',
+                     'note(online, "打赏作者 · 请喝一杯咖啡"); note(online, "默认完全离线：'),
+     False, True, False),
 ]
 
 print("--- baseline ---")

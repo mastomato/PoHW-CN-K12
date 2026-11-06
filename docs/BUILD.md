@@ -107,13 +107,14 @@ OTHER 池路由字面量、SQL 双份参数绑定、池保持兜底常量、`has
 `QuizDb.java` 的 `POOL_*` 命名常量提取与 Java 同源的真实 SQL，校验双份绑定与三层兜底，
 对内置题库做 9 年级 × 4 池 × 60 次池隔离、两次 5000 次配比分布、全学科关闭 0 题校验，
 以及 `FALLBACK_POOL_OK`（模拟三年级英语池 / 其他池为空，兜底仍保持学科约束、不串池）。
-`tests/mutation_suite.py` 落仓库可复核：**29 组负向变异**（含注释诱饵、破坏绑定、
+`tests/mutation_suite.py` 落仓库可复核：**28 组负向变异**（含注释诱饵、破坏绑定、
 去掉池保持兜底、不带发布密钥构建、恢复 gradeWide SQL）全部被契约 / 运行时分布 / 构建门禁拦下，
 末尾自动恢复源码哈希并用发布密钥重建 `dist/`。
 注意 `grep -q 'new int[Subjects.COUNT]'` 会把方括号当正则字符类；必须用 `grep -qF`。
-`[0/9]` 另钉死本轮新增结构：`ROW_GAP_DP`（设置页行间距）、`LaunchPolicy.shouldAutoGuard`
-（首页冷启动自动守护）、Manifest 里的 `DonateActivity`，以及两张收款码 PNG 与
-`tools/branding/make_icons.py` 必须存在。图标 / TV banner / 状态栏小图标由该脚本用 PIL
+`[0/9]` 另钉死本轮结构：`ROW_GAP_DP`（设置页行间距）、`LaunchPolicy.shouldAutoGuard`
+（首页冷启动自动守护），以及 `tools/branding/make_icons.py` 必须存在；v1.0.2 起对打赏改为
+**反向门禁**——Manifest / 设置页不得出现 `DonateActivity` 或打赏文案，两张收款码 PNG 不得存在。
+图标 / TV banner / 状态栏小图标由该脚本用 PIL
 确定性生成（5 档 launcher 密度 + 640×360 banner），改设计只需改脚本后重跑，无需设计工具。
 `[9/9]` 打包源码前会先删除旧的 `PoHW-src.zip`（`zip -r` 对已存在归档只做增量更新，
 旧条目不会消失），并硬性拒绝 `__pycache__` / `*.pyc` 混进交付源码包。
