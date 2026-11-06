@@ -32,7 +32,7 @@ public class MainActivity extends Activity {
 
     private static final String NL = "\n";
     private SettingsStore st;
-    private TextView status, statusRight, heroStatus;
+    private TextView status, statusRight, heroStatus, guardDetail;
     private FrameLayout rootView;
     private Button btnGuard, btnWrong, btnBoot;
     /** 首页 3 列 × 2 排网格：显式维护同列上下 / 同行左右的 TV 遥控器焦点链。 */
@@ -231,43 +231,28 @@ public class MainActivity extends Activity {
         rootView = new FrameLayout(this);
         LinearLayout l = Ui.vbox(this);
         l.setBackgroundColor(Ui.BG);
-        l.setGravity(Gravity.CENTER_VERTICAL);
+        l.setGravity(Gravity.TOP);
         l.setPadding(Ui.dp(this, 40), Ui.dp(this, 18), Ui.dp(this, 40), Ui.dp(this, 12));
 
-        TextView title = Ui.tv(this, "知行答题守护", 29, Ui.TEXT);
+        TextView title = Ui.tv(this, "知行答题守护", 34, Ui.TEXT);
         title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         l.addView(title, Ui.fixed(this, 46));
         l.addView(Ui.tv(this, "电视答题练习  ·  应用版本 " + appVersion,
                 15, Ui.MUTED), Ui.fixed(this, 32));
 
-        LinearLayout statusCard = Ui.vbox(this);
-        statusCard.setPadding(Ui.dp(this, 22), Ui.dp(this, 18), Ui.dp(this, 22), Ui.dp(this, 18));
-        statusCard.setBackground(Ui.round(Ui.CARD, 14, this));
-        heroStatus = Ui.tv(this, "", 24, Ui.PURPLE, Gravity.LEFT);
+        LinearLayout cards = Ui.hbox(this);
+        cards.setGravity(Gravity.CENTER_VERTICAL);
+        heroStatus = Ui.tv(this, "", 29, Ui.PURPLE, Gravity.LEFT);
         heroStatus.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        statusCard.addView(heroStatus);
-        LinearLayout detailRow = Ui.hbox(this);
-        detailRow.setGravity(Gravity.TOP);
-        status = Ui.tv(this, "", 16, Ui.TEXT, Gravity.LEFT);
-        status.setLineSpacing(Ui.dp(this, 4), 1.12f);
-        statusRight = Ui.tv(this, "", 16, Ui.TEXT, Gravity.LEFT);
-        statusRight.setLineSpacing(Ui.dp(this, 4), 1.12f);
-        LinearLayout.LayoutParams col = new LinearLayout.LayoutParams(0, -2, 1);
-        col.rightMargin = Ui.dp(this, 20);
-        detailRow.addView(status, col);
-        View divider = new View(this);
-        divider.setBackgroundColor(Ui.BORDER);
-        detailRow.addView(divider, new LinearLayout.LayoutParams(Ui.dp(this, 1), Ui.dp(this, 125)));
-        LinearLayout.LayoutParams rightCol = new LinearLayout.LayoutParams(0, -2, 1);
-        rightCol.leftMargin = Ui.dp(this, 20);
-        detailRow.addView(statusRight, rightCol);
-        LinearLayout.LayoutParams detailsLp = new LinearLayout.LayoutParams(-1, -2);
-        detailsLp.topMargin = Ui.dp(this, 10);
-        statusCard.addView(detailRow, detailsLp);
-        LinearLayout.LayoutParams statusParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        statusParams.setMargins(0, Ui.dp(this, 5), 0, Ui.dp(this, 15));
-        l.addView(statusCard, statusParams);
+        guardDetail = Ui.tv(this, "", 20, Ui.TEXT, Gravity.LEFT);
+        addSummaryCard(cards, "守护状态", heroStatus, guardDetail);
+        status = Ui.tv(this, "", 20, Ui.TEXT, Gravity.LEFT);
+        status.setLineSpacing(Ui.dp(this, 8), 1.15f);
+        addSummaryCard(cards, "学习配置", status);
+        statusRight = Ui.tv(this, "", 20, Ui.TEXT, Gravity.LEFT);
+        statusRight.setLineSpacing(Ui.dp(this, 8), 1.15f);
+        addSummaryCard(cards, "题库与设备", statusRight);
+        l.addView(cards, Ui.fill(1));
 
         // 首页 3 列 × 2 排：上排高频操作，下排权限 / 数据 / 厂商入口。
         // 单一守护开关的文案与底色仍由 GuardState.toggle* 给出；运行中点击先过
@@ -323,6 +308,23 @@ public class MainActivity extends Activity {
         rootView.addView(l, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         return rootView;
+    }
+
+    private void addSummaryCard(LinearLayout row, String heading, TextView... values) {
+        LinearLayout card = Ui.vbox(this);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(Ui.dp(this, 24), Ui.dp(this, 22), Ui.dp(this, 24), Ui.dp(this, 22));
+        card.setBackground(Ui.round(Ui.CARD, 14, this));
+        TextView caption = Ui.tv(this, heading, 17, Ui.MUTED, Gravity.LEFT);
+        card.addView(caption);
+        for (TextView value : values) {
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
+            p.topMargin = Ui.dp(this, 18);
+            card.addView(value, p);
+        }
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, -1, 1);
+        p.setMargins(Ui.dp(this, 7), Ui.dp(this, 6), Ui.dp(this, 7), Ui.dp(this, 15));
+        row.addView(card, p);
     }
 
     // ---------- 就地密码验证（不启动新 Activity、不 finish 本界面） ----------
@@ -418,38 +420,34 @@ public class MainActivity extends Activity {
     private void render() {
         if (!alive || status == null) return;
         boolean running = QuizOverlayService.isRunning();
-        StringBuilder hero = new StringBuilder(running ? "守护运行中" : "守护已关闭");
-        if (running) {
-            hero.append("  ·  ").append(QuizOverlayService.isQuizShowing()
-                    ? "答题遮罩已弹出" : "距下次答题 " + QuizOverlayService.remainSec() + " 秒");
-        }
-        String heroText = hero.toString();
+        String heroText = running ? "守护运行中" : "守护已关闭";
         if (!heroText.equals(heroStatus.getText().toString())) heroStatus.setText(heroText);
         heroStatus.setTextColor(running ? Ui.PURPLE : Ui.MUTED);
+        String guardText = (running
+                ? (QuizOverlayService.isQuizShowing() ? "答题页已显示"
+                        : "距离下次答题\n" + QuizOverlayService.remainSec() + " 秒")
+                : "打开守护后，按设定间隔弹出答题页")
+                + "\n\n开机自启：" + (st.bootAutostart() ? "开" : "关")
+                + "\n启动即守护：" + (st.autoGuardOnBoot() ? "开" : "关");
+        if (!guardText.equals(guardDetail.getText().toString())) guardDetail.setText(guardText);
 
         StringBuilder s = new StringBuilder();
-        s.append("当前配置  ").append(st.gradeLabel()).append("  ·  每 ").append(st.intervalSec())
-                .append(" 秒一题  ·  每轮 ").append(st.roundCount()).append(" 题").append(NL);
-        s.append("学科权重  ")
+        s.append(st.gradeLabel()).append(NL)
+                .append("每 ").append(st.intervalSec()).append(" 秒一题").append(NL)
+                .append("每轮 ").append(st.roundCount()).append(" 题").append(NL);
+        s.append("学科权重：")
                 .append(st.allSubjects()
-                        ? ("全学科 数/语/英/其他 " + st.weight(0) + "/" + st.weight(1)
+                        ? ("数/语/英/其他 " + st.weight(0) + "/" + st.weight(1)
                                 + "/" + st.weight(2) + "/" + st.weight(3))
                         : ("数/语/英 " + st.weight(0) + "/" + st.weight(1) + "/" + st.weight(2)))
                 .append(NL);
-        s.append("教材版本  ");
-        for (int i = 0; i < Subjects.COUNT; i++) {
-            if (i > 0) s.append(" / ");
-            s.append(Subjects.name(i)).append(" ").append(st.editionFor(i));
-        }
-        s.append(NL);
-        s.append("答题记录  答对 ").append(st.correct()).append(" / ").append(st.questioned())
-                .append(" 题  ·  错题 ").append(WrongBook.cachedCount()).append(" 题");
+        s.append("数学教材：").append(st.editionFor(Subjects.MATH));
         StringBuilder right = new StringBuilder();
-        right.append("离线题库  ").append(bankLine()).append(NL).append(NL);
-        right.append("设备状态  悬浮窗").append(canDrawCached ? "已授权" : "未授权")
-                .append("  ·  家长密码").append(st.hasPin() ? "已设置" : "未设置")
-                .append("  ·  开机自启").append(st.bootAutostart() ? "开" : "关")
-                .append("（启动即守护：").append(st.autoGuardOnBoot() ? "开" : "关").append("）");
+        right.append("离线题库：").append(bankLine()).append(NL)
+                .append("答对 ").append(st.correct()).append(" / ").append(st.questioned())
+                .append(" 题  ·  错题 ").append(WrongBook.cachedCount()).append(" 题").append(NL)
+                .append("悬浮窗：").append(canDrawCached ? "已授权" : "未授权").append(NL)
+                .append("家长密码：").append(st.hasPin() ? "已设置" : "未设置");
         // 每秒轮询只在文本真的变化时才触碰 TextView / Button，避免无意义的重绘。
         String text = s.toString();
         if (!text.equals(status.getText().toString())) status.setText(text);

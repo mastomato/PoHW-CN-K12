@@ -76,61 +76,59 @@ public final class OverlayQuizView {
         root.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
         LinearLayout body = Ui.vbox(c);
         body.setGravity(Gravity.CENTER_VERTICAL);
-        int viewport = c.getResources().getDisplayMetrics().widthPixels;
-        int gutter = Math.max(dp(28), (viewport - dp(900)) / 2);
-        body.setPadding(gutter, dp(24), gutter, dp(24));
+        body.setPadding(dp(40), dp(24), dp(40), dp(24));
         scroll.addView(body);
-        body.addView(label("知行答题  /  答题守护", 13, MUTED, false));
+        body.addView(label("知行答题  /  答题守护", 16, MUTED, false));
         LinearLayout header = Ui.hbox(c);
         header.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams headerLp = new LinearLayout.LayoutParams(-1, -2);
         headerLp.topMargin = dp(7);
         body.addView(header, headerLp);
-        TextView heading = label("答题练习", 29, INK, true);
+        TextView heading = label("答题练习", 33, INK, true);
         header.addView(heading, new LinearLayout.LayoutParams(0, -2, 1));
-        sideProgress = label("", 15, PURPLE, true);
+        sideProgress = label("", 19, PURPLE, true);
         sideProgress.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
         header.addView(sideProgress, new LinearLayout.LayoutParams(dp(165), -2));
-        body.addView(label("方向键选择，按确定直接作答；按返回键退出。", 14, MUTED, false));
+        body.addView(label("方向键选择，按确定直接作答；按返回键退出。", 17, MUTED, false));
 
         LinearLayout card = Ui.vbox(c);
-        card.setPadding(dp(18), dp(16), dp(18), dp(18));
+        card.setPadding(dp(26), dp(22), dp(26), dp(24));
         card.setBackground(shape(WHITE, 0));
         LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(-1, -2);
         cardLp.topMargin = dp(16);
         body.addView(card, cardLp);
 
-        topic = label("", 14, PURPLE, true);
+        topic = label("", 18, PURPLE, true);
         card.addView(topic);
-        question = label("", 26, INK, true);
+        question = label("", 31, INK, true);
         question.setPadding(0, dp(16), 0, dp(14));
         question.setLineSpacing(dp(4), 1.08f);
         card.addView(question, new LinearLayout.LayoutParams(-1, -2));
 
         for (int i = 0; i < opts.length; i++) {
             final int choice = i;
-            Button b = Ui.button(c, "", 0xFFF7F7FB, INK, 20);
+            Button b = Ui.button(c, "", 0xFFF7F7FB, INK, 23);
             b.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
-            b.setMinHeight(dp(56));
-            b.setPadding(dp(18), dp(10), dp(18), dp(10));
+            b.setMinHeight(dp(64));
+            b.setPadding(dp(20), dp(11), dp(20), dp(11));
             b.setFocusable(false);
             b.setFocusableInTouchMode(false);
             b.setOnClickListener(new View.OnClickListener() {
                 @Override public void onClick(View v) { submit(choice); }
             });
             LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
-            p.topMargin = dp(8);
+            p.topMargin = dp(10);
             card.addView(b, p);
             opts[i] = b;
         }
 
-        feedback = label("", 14, MUTED, false);
+        feedback = label("", 18, MUTED, false);
         feedback.setPadding(0, dp(8), 0, dp(4));
         card.addView(feedback, new LinearLayout.LayoutParams(-1, -2));
-        explain = label("", 14, MUTED, false);
+        explain = label("", 18, MUTED, false);
         explain.setLineSpacing(dp(3), 1f);
         card.addView(explain, new LinearLayout.LayoutParams(-1, -2));
-        next = Ui.button(c, "下一题  →", PURPLE, WHITE, 16);
+        next = Ui.button(c, "下一题  →", PURPLE, WHITE, 18);
         next.setFocusable(false);
         next.setFocusableInTouchMode(false);
         next.setBackground(shape(PURPLE, 0));
@@ -141,7 +139,7 @@ public final class OverlayQuizView {
                 else if (flow.isAnswered() && picked != correctIndex) requestNext();
             }
         });
-        LinearLayout.LayoutParams nextLp = new LinearLayout.LayoutParams(dp(220), dp(52));
+        LinearLayout.LayoutParams nextLp = new LinearLayout.LayoutParams(dp(240), dp(60));
         nextLp.topMargin = dp(14);
         card.addView(next, nextLp);
     }
@@ -180,7 +178,7 @@ public final class OverlayQuizView {
         sideProgress.setText("第 " + number + " / " + total + " 题");
         topic.setText(meta);
         question.setText(q.text == null ? "" : q.text);
-        question.setTextSize(Math.min(27, QuizTextSizer.sp(q.text)));
+        question.setTextSize(Math.min(31, QuizTextSizer.sp(q.text)));
         for (int i = 0; i < 4; i++) {
             String answer = q.options != null && i < q.options.length && q.options[i] != null
                     ? q.options[i] : "";
