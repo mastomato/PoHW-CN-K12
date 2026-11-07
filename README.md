@@ -2,7 +2,7 @@
 
 基于 [jagerzhang/PoHW](https://github.com/jagerzhang/PoHW) 的 Android TV 答题守护应用。守护服务会按家长设置的间隔在其他应用上方显示答题页；题库离线可用，支持小学和初中多个学科。
 
-**当前版本：1.0.4（versionCode 21）** · [GitHub Releases](https://github.com/mastomato/PoHW-CN-K12/releases) · 本地新包 `dist/PoHW-v1.0.4.apk`
+**当前版本：1.0.4（versionCode 21）** · [下载 APK](https://github.com/mastomato/PoHW-CN-K12/releases/download/v1.0.4-cn.1/PoHW-v1.0.4.apk) · [查看 Release](https://github.com/mastomato/PoHW-CN-K12/releases/tag/v1.0.4-cn.1) · 本地新包 `dist/PoHW-v1.0.4.apk`
 
 ## 1.0.4 修复的两件事
 
