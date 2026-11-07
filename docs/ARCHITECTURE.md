@@ -21,6 +21,11 @@
 | `OverlayQuizView` / `QuizTextSizer` | 题目 UI 与自适应字号 |
 | `SettingsStore` | SharedPreferences 封装 + PIN 哈希 + 四科配比（`w0..w3`） |
 | `SubjectWeights` | 纯 Java 四槽学科权重；全学科开关与题库可用性共同决定第 4 槽是否有效，可 JVM 单测 |
+| `KeyRouter` | 纯 Java 遥控器按键语义路由；v1.0.4 增加 `SEM_HOME`（吞掉 HOME / 最近任务）与 `SEM_PARENT`（菜单键 / 数字 0 家长出口） |
+| `QuizFlow` / `QuizRound` | 单题判题状态机 / 每轮题数与成绩；`QuizRound.reset()` 只清本轮，不影响退出门禁的会话计数 |
+| `ExitPolicy` | **v1.0.4 新增**：纯 Java 退出门禁单一规则源，`canExit(sessionCorrect)` / `tip()` / `blockedHint()` |
+| `MediaPauseController` | **v1.0.4 重写**：持续音频焦点 + 重复媒体暂停键 + 活跃 MediaSession 点名暂停，退出时归还焦点并尝试恢复 |
+| `MediaSessionListener` | **v1.0.4 新增**：空 `NotificationListenerService`，仅为取得「通知使用权」以枚举活跃会话，不读取、不缓存任何通知内容 |
 
 v1.0.1 起控制台只有一个守护开关：`GuardState.toggleColor(running)` 给绿/红，
 `toggleLabel(running)` 给「开启守护 / 关闭守护」；运行中点击先过 `PinVerifyView`，
@@ -30,7 +35,7 @@ v1.0.1 起控制台只有一个守护开关：`GuardState.toggleColor(running)` 
 左右关系，保证 TV 遥控器能在教材版本与题目配比之间移动，且不需要跨栏跳转。
 单列行两端未显式定义的左右目标指向自身（URL `EditText` 例外，左右键留给光标移动），
 避免系统按几何邻近把焦点甩到相邻行；行按钮 `WRAP_CONTENT` + 44dp 最小高度，兼容系统大字模式。
-源码结构由 `tests/layout_contract.py` 的 **114 条**断言在构建门禁里守住，
+源码结构由 `tests/layout_contract.py` 的 **125 条**断言在构建门禁里守住，
 `build.sh` 另在签名后强制比对发布证书指纹。
 
 **学科配比（versionCode 15）**：`SubjectWeights` 保存数 / 语 / 英 / 其他四槽权重（默认 5:3:2:2）。
@@ -44,7 +49,7 @@ v1.0.1 起控制台只有一个守护开关：`GuardState.toggleColor(running)` 
 提取真实 SQL 实跑内置题库，验证池隔离、配比分布与全学科关闭时 0 题，纳入 `[0/9]` 门禁。
 兜底是**池保持**的：先只放宽年级（`POOL_CORE_ALL` / `POOL_OTHER_ALL`），最后才全库；
 空池用 `MAX(1, (SELECT COUNT(*) ...))` 保证 `OFFSET` 不为 NULL，避免 SQL 异常被吞后静默串池。
-同一批 `POOL_*` 常量、双份参数绑定与三层兜底都被 114 条契约和 `tests/mutation_suite.py` 的 29 组变异钉死。
+同一批 `POOL_*` 常量、双份参数绑定与三层兜底都被 125 条契约和 `tests/mutation_suite.py` 的 35 组负向变异钉死。
 
 **默认开关与启动链路**：全新安装时「开机自启」关、「启动即守护」开、答题暂停与恢复播放均开。
 `MainActivity.onCreate()` 用 `LaunchPolicy.shouldAutoGuard()` 判定是否自动拉起守护，四个条件缺一不可：
@@ -63,9 +68,14 @@ v1.0.1 起控制台只有一个守护开关：`GuardState.toggleColor(running)` 
        startForeground(NOTIF_ID, buildNotification())
        reload(): QuizDb.open(this) -> engine.setDb/setBank/setAllSubjects
   -> Handler 每 1 秒 tick，倒计时归零 -> showQuiz()
-       wm.addView(quizView, TYPE_APPLICATION_OVERLAY 全屏参数)
-  -> 答对 -> correct() -> 「继续」-> finishQuiz() -> removeViewImmediate()
-       remainSec = interval（续租）
+       sessionCorrect = 0；wm.addView(quizView, TYPE_APPLICATION_OVERLAY 全屏参数)
+       media.quizShown(st)：持续占用音频焦点 + 重复派发 pause 键
+  -> 每题判定 -> correct() / wrong()；仅答对时 sessionCorrect++
+  -> 一轮结束 -> 留在答题页显示成绩；确定键开下一轮（QuizRound.reset()）
+  -> 返回键 -> OverlayQuizView.requestExit()
+       !ExitPolicy.canExit(sessionCorrect) -> nudgeExit() 提示，遮罩不撤
+       放行 -> finishQuiz()（服务侧二次校验）-> removeViewImmediate()
+       media.quizFinished(st) 归还焦点 / 尝试恢复；remainSec = interval（续租）
 ```
 
 为什么用 `WindowManager.addView` 而不是 `startActivity`：Android 10+ 有后台启动
@@ -169,9 +179,13 @@ Android 8+ 的「5 秒内前台化」要求；`onDestroy()` 还会显式 `stopFo
   `onWindowFocusChanged(false)` 通知服务，服务有限次 `updateViewLayout` 重新
   下发参数、必要时 `remove` + `add` 同一个 View 重建窗口（保留 `QuizFlow` 状态），
   用 `focusRecovering` 过滤嵌套回调防止自旋。重抢失败则保留遮罩、不自动放行。
-- **播放暂停**：`MediaPauseController` 只使用 `AudioManager` 的公开能力
-  （短暂音频焦点 + `dispatchMediaKeyEvent`），不创建 MediaSession、不申请通知使用权、
-  不注入按键。服务 `onDestroy` / `stopAll` 都会 `release()` 归还焦点。
+- **播放暂停（v1.0.4 重写）**：旧的「一次短暂焦点 + 一次媒体键」对不注册
+  MediaSession、也不理会 `AUDIOFOCUS_LOSS_TRANSIENT` 的电视视频 App 基本无效。
+  现在 `MediaPauseController` 全程持有 `AUDIOFOCUS_GAIN_TRANSIENT`，用单条
+  `pulse` Runnable 链在 0.35s / 1s / 之后每 2.5s 重复派发
+  `KEYCODE_MEDIA_PAUSE`（显式 pause 幂等，最多 240 次）；家长授予「通知使用权」
+  后，再借 `MediaSessionListener` 枚举活跃会话逐个 `tc.pause()`。服务
+  `onDestroy` / `stopAll` 都会 `release()` 归还焦点。详见文末「1.0.4 行为修复」。
 - **错题库**：独立 `SQLiteOpenHelper`（`pohw_wrong.db`），与只读 `quiz.db` 完全隔离；
   单线程 `ExecutorService` 异步写入，主线程读走 `cachedCount()` 避免每秒轮询 SQLite。
   题目去重键为长度前缀编码的 `subject + answerIndex + 题干 + 四个选项`
@@ -191,3 +205,67 @@ Android 8+ 的「5 秒内前台化」要求；`onDestroy()` 还会显式 `stopFo
 - 暂停视频是 best-effort，不同视频 App 对音频焦点与媒体键的响应不一致，需要在真机逐个验证。
 - 内置离线题库没有出版社版本字段，分学科版本不会改变离线抽题结果。
 - 错题库不做云同步、不跨设备；`adb shell pm clear` 会一并清空。
+
+## 1.0.4 行为修复
+
+### 退出门禁：至少答对一题
+
+`ExitPolicy` 是**纯 Java、零 Android 依赖**的单一规则源，`REQUIRED_CORRECT = 1`。
+`QuizOverlayService` 用 `sessionCorrect` 记录「一次弹题会话」的累计答对数：
+`showQuiz()` 清零，`correct()` 递增，`bind()` 换题与 `QuizRound.reset()` 开新一轮
+都**不清零**——否则孩子只要熬到新一轮就能重新上锁前的空窗期退出。
+
+三道防线：
+
+1. **View 层**：`OverlayQuizView.requestExit()` 首先检查 `exitAllowed`；为 `false`
+   时只调 `nudgeExit()` 显示 `ExitPolicy.blockedHint()`，不进入退出流程。
+   `exitAllowed` 由 `setExitAllowed(true)` 单向置位，`bind()` 不会重置。
+2. **服务层**：`finishQuiz()` 再判一次 `ExitPolicy.canExit(sessionCorrect)`，
+   防止将来有别的调用点绕过 View 直接摘窗口。
+3. **窗口层**：tick 每秒巡检，未满足门禁且 `quizView.isAttached() == false` 时
+   `rebuildOverlay()` 重建覆盖窗口，并让 `media.reassert()` 重新压住播放。
+
+`KeyRouter` 新增 `SEM_HOME` / `SEM_PARENT`：`KEYCODE_HOME`、`KEYCODE_APP_SWITCH`
+一律 `ACT_CONSUME`；`KEYCODE_MENU` / `KEYCODE_0` / `KEYCODE_NUMPAD_0` 触发
+`ACT_PARENT`，由服务弹出 `PinVerifyView` 家长密码出口（`st.hasPin()` 为假时
+提示文案不提这个出口，避免形同虚设）。验证通过置 `parentOverride = true`，
+仅对**本次**弹题会话放行，`showQuiz()` 时复位。
+
+### 持续暂停：从「一次」到「按住不放」
+
+`MediaPauseController.quizShown(st)` 申请 `AUDIOFOCUS_GAIN_TRANSIENT` 并全程持有，
+然后按 `FIRST_DELAY=350ms` → `SECOND_GAP=650ms` → `PULSE_INTERVAL=2500ms`
+重复 `pauseNow()`，上限 `MAX_PULSES=240`（约 10 分钟）。
+关键是**只挂一条 Runnable 链**：每次续播都新建链会让暂停按键按指数级增殖。
+`pauseNow()` 做两件事：
+
+- `dispatch(KEYCODE_MEDIA_PAUSE)`：显式 pause 对绝大多数播放器幂等；
+- `pauseActiveSessions()`：`MediaSessionManager.getActiveSessions(
+  new ComponentName(app, MediaSessionListener.class))` 枚举活跃会话，逐个
+  `TransportControls.pause()`，命中率最高。没有「通知使用权」时该调用会抛
+  `SecurityException`，被捕获后静默退回音频焦点 + 媒体键方案。
+
+`MediaSessionListener` 是空的 `NotificationListenerService`，只为让系统把
+「通知使用权」授予本进程；它不覆写任何回调，**不读取通知内容**。
+`hasSessionControl(Context)` 通过 `enabled_notification_listeners` 检查授权状态，
+家长设置页据此显示「已授权 / 未授权」。
+
+退出时 `releaseInternal(tryResume)` 归还音频焦点；仅当确实发过暂停请求、
+且家长开启「恢复播放」时，才补发一次 `KEYCODE_MEDIA_PLAY`。
+`sessionPauseUsed` 参与判断，避免对从未被暂停的播放器误触播放。
+
+### 门禁与测试
+
+`app/build.sh [0/9]` 用符号级断言钉死 `ExitPolicy.canExit`、`exitAllowed`、
+`sessionCorrect`、`getActiveSessions`、`PULSE_INTERVAL`、`SEM_HOME`、
+`SEM_PARENT`、Manifest 中的 `.MediaSessionListener`，并显式禁止
+`onExit() { finishQuiz(); }` 这种无门禁回退写法。`tests/layout_contract.py`
+125 条断言、`tests/run.sh` 9 组 226 项 JVM 检查（含新增 `ExitGateTest`）、
+`tests/mutation_suite.py` 35 组负向变异（AC–AI 专门针对本次两项修复）共同守住行为。
+
+### 签名与覆盖安装
+
+1.0.4 把发布证书改回 `e5816bddefeb145849d98fa9c75149dc26c9cc3ea0d58a717de442e48212286c`
+（1.0.1 / 1.0.2 同一把私钥，本机持有）。1.0.3 的
+`42cbf6a7009e9817cab64aa2b180d76fb722bd7e4e53c8ee4ef8a3a08ca07cdb` 私钥未保存，
+`[8/9]` 的证书指纹门禁会以新指纹为准；装有 1.0.3 的设备必须先卸载。

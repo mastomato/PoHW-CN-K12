@@ -1,8 +1,10 @@
 package com.jager.tvquiz;
 
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -57,7 +59,7 @@ public class SettingsActivity extends Activity {
     private Button[] rowEd = new Button[Subjects.COUNT];
     private Button[] rowWt = new Button[Subjects.COUNT];
     private final java.util.List<Button[]> subjectPairs = new java.util.ArrayList<Button[]>();
-    private Button rowBoot, rowAutoGuard, rowPause, rowResume;
+    private Button rowBoot, rowAutoGuard, rowPause, rowResume, rowMediaAccess;
     /** 单列焦点链：每行一个数组，纵向按加入顺序连接。 */
     private final java.util.List<View[]> focusRows = new java.util.ArrayList<View[]>();
     private Button btnChangePin, btnSave;
@@ -328,7 +330,7 @@ public class SettingsActivity extends Activity {
             }
         });
         note(quiz, "点击右侧取值即可循环切换，离开设置页时统一保存。");
-        note(quiz, "每轮完成后显示成绩；按确定键开始下一轮，只有主动按返回键才退出答题。");
+        note(quiz, "每轮完成后显示成绩；按确定键开始下一轮，本次至少答对 1 题后返回键才生效。");
         note(quiz, "学期只影响内置题库的抽题范围：选「上册 / 下册」时优先出该学期与全学年通用的题；"
                 + "题库未标注学期的题始终参与，该学期题量不足时自动放宽到同年级同学科。");
 
@@ -353,6 +355,9 @@ public class SettingsActivity extends Activity {
         rowResume = addRow(boot, "恢复播放", new View.OnClickListener() {
             @Override public void onClick(View v) { st.resumePlayback(!st.resumePlayback()); refreshRows(); }
         });
+        rowMediaAccess = addRow(boot, "强制暂停播放器", new View.OnClickListener() {
+            @Override public void onClick(View v) { openNotificationAccess(); }
+        });
         addButton(boot, "开启厂商自启动设置", Ui.BTN_BG, new View.OnClickListener() {
             @Override public void onClick(View v) {
                 BootSettings.open(SettingsActivity.this);
@@ -363,7 +368,9 @@ public class SettingsActivity extends Activity {
         });
         note(boot, "「启动即守护」默认开启：打开 APP 即自动进入守护；「开机自启」默认关闭，"
                 + "需家长自行开启并允许厂商自启动权限后，才会随开机拉起。");
-        note(boot, "暂停视频是 best-effort：靠音频焦点 + 媒体键请求播放器暂停，不保证所有视频 App 响应。");
+        note(boot, "答题时按住不放的暂停：持续占用音频焦点，并每 2.5 秒补发一次暂停键；"
+                + "再打开「通知使用权」（点上面那行）后，可直接对每个正在播放的 App 点名暂停，命中率最高。仍属 best-effort。");
+        note(boot, "本次弹题至少答对 1 题才能按返回退出；家长可按遥控器菜单键或数字 0 输密码退出。");
 
         // ---- 04 错题库 ----
         LinearLayout wrong = addCard(col, "04  错题库");
@@ -590,6 +597,28 @@ public class SettingsActivity extends Activity {
         return v.getId();
     }
 
+    @Override protected void onResume() {
+        super.onResume();
+        // 从系统「通知使用权」页返回时刷新授权状态。
+        if (rowMediaAccess != null) rowMediaAccess.setText(mediaAccessLabel());
+    }
+
+    private String mediaAccessLabel() {
+        return MediaPauseController.hasSessionControl(this)
+                ? "已授权 · 点名暂停生效" : "未授权 · 点此开启";
+    }
+
+    private void openNotificationAccess() {
+        try {
+            startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
+            Toast.makeText(this, "在列表里找到 PoHW 并允许「通知使用权」",
+                    Toast.LENGTH_LONG).show();
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, "这台设备没有提供「通知使用权」设置页，将只使用音频焦点 + 媒体键暂停",
+                    Toast.LENGTH_LONG).show();
+        }
+    }
+
     private void refreshRows() {
         rowGrade.setText(st.gradeLabel());
         rowTerm.setText(st.termLabel());
@@ -607,6 +636,7 @@ public class SettingsActivity extends Activity {
         rowAutoGuard.setText(st.autoGuardOnBoot() ? "开启（启动即守护）" : "关闭（仅恢复上次）");
         rowPause.setText(st.pauseOnQuiz() ? "开启（音频焦点+媒体键）" : "关闭");
         rowResume.setText(st.resumePlayback() ? "开启（尝试恢复）" : "关闭");
+        rowMediaAccess.setText(mediaAccessLabel());
         if (!urlDirty) setUrlText(st.bankUrl(), false);
         pinState.setText(st.hasPin() ? "家长密码：已设置 ✓" : "家长密码：未设置 ✗");
         updateBankStatus();

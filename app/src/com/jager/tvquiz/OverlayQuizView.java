@@ -20,6 +20,9 @@ public final class OverlayQuizView {
         void onNext();
         void onNewRound();
         void onExit();
+        /** 家长应急出口：菜单键 / 数字 0 触发，由服务弹出密码验证。 */
+        void onParentUnlock();
+        void onParentCancel();
         void onWindowFocus(boolean hasFocus);
     }
 
@@ -52,7 +55,7 @@ public final class OverlayQuizView {
     private final Listener listener;
     private final QuizFlow flow = new QuizFlow();
     private final Button[] opts = new Button[4];
-    private final TextView topic, question, feedback, explain, sideProgress;
+    private final TextView topic, question, feedback, explain, sideProgress, tip;
     private final Button next;
     private Runnable autoNext;
     private int phase = QUESTION;
@@ -60,6 +63,10 @@ public final class OverlayQuizView {
     private int correctIndex = -1;
     private boolean transitionPending;
     private boolean exitPending;
+    /** 本次弹题会话是否已满足退出门禁；换题、开新一轮都不清零。 */
+    private boolean exitAllowed = false;
+    private boolean parentPinSet = false;
+    private View parentGate;
 
     public OverlayQuizView(Context ctx, Listener l) {
         c = ctx;
@@ -89,7 +96,9 @@ public final class OverlayQuizView {
         sideProgress = label("", 19, PURPLE, true);
         sideProgress.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
         header.addView(sideProgress, new LinearLayout.LayoutParams(dp(165), -2));
-        body.addView(label("方向键选择，按确定直接作答；按返回键退出。", 17, MUTED, false));
+        tip = label("", 17, MUTED, false);
+        body.addView(tip);
+        renderTip();
 
         LinearLayout card = Ui.vbox(c);
         card.setPadding(dp(26), dp(22), dp(26), dp(24));
@@ -163,6 +172,51 @@ public final class OverlayQuizView {
     public boolean hasWindowFocus() { return root.hasWindowFocus(); }
     public void focusFirst() { root.requestFocus(); paint(); }
 
+    /** 家长是否设置了密码：决定操作提示里要不要提示应急出口。 */
+    public void setParentPinSet(boolean v) { parentPinSet = v; renderTip(); }
+
+    /**
+     * 由服务在「本次弹题会话累计答对数」变化后调用。只允许 false -> true：
+     * 答对过的成绩不因换题 / 新一轮 / 重绘而倒退。
+     */
+    public void setExitAllowed(boolean v) {
+        if (v) exitAllowed = true;
+        renderTip();
+    }
+
+    private void renderTip() {
+        if (tip == null) return;
+        tip.setText(ExitPolicy.tip(exitAllowed, parentPinSet));
+        tip.setTextColor(exitAllowed ? MUTED : PURPLE);
+    }
+
+    /** 服务侧第二道防线被触发时，给出可见反馈，避免用户以为遥控器坏了。 */
+    public void nudgeExit() {
+        feedback.setTextColor(RED);
+        feedback.setText(ExitPolicy.blockedHint());
+    }
+
+    /** 家长密码浮层：作为子 View 叠在答题页上，不另开窗口、不摘遮罩。 */
+    public void showParentGate(View gateView) {
+        hideParentGate();
+        parentGate = gateView;
+        root.addView(gateView, new FrameLayout.LayoutParams(-1, -1));
+        root.post(new Runnable() {
+            @Override public void run() { if (parentGate != null) parentGate.requestFocus(); }
+        });
+    }
+
+    public void hideParentGate() {
+        if (parentGate == null) return;
+        root.removeView(parentGate);
+        parentGate = null;
+        root.requestFocus();
+    }
+
+    public boolean hasParentGate() { return parentGate != null; }
+
+    public boolean isAttached() { return root.isAttachedToWindow(); }
+
     public void onWindowFocus(boolean hasFocus) {
         if (hasFocus) focusFirst();
         if (listener != null) listener.onWindowFocus(hasFocus);
@@ -189,6 +243,8 @@ public final class OverlayQuizView {
         explain.setText("");
         next.setVisibility(View.GONE);
         paint();
+        // 换题不清 exitAllowed：答对过一次就保持解锁状态，直到本次弹题结束。
+        renderTip();
         root.requestFocus();
     }
 
@@ -231,9 +287,12 @@ public final class OverlayQuizView {
         for (Button b : opts) b.setVisibility(View.GONE);
         feedback.setTextColor(PURPLE);
         feedback.setText("正确率 " + (total == 0 ? 0 : correct * 100 / total) + "%");
-        explain.setText("按确定开始下一轮，按返回退出答题。");
+        explain.setText(exitAllowed
+                ? "按确定开始下一轮，按返回退出答题。"
+                : ExitPolicy.blockedHint() + " 按确定开始下一轮继续作答。");
         next.setText("开始下一轮  →");
         next.setVisibility(View.VISIBLE);
+        renderTip();
         root.requestFocus();
     }
 
@@ -243,12 +302,25 @@ public final class OverlayQuizView {
     }
 
     private boolean onKey(KeyEvent e) {
+        // 家长密码浮层自己处理数字键 / DPAD；这里只接管返回键做「取消验证」。
+        // 注意父窗口的 dispatchKeyEvent 先于子 View，必须显式让路，否则密码永远输不进去。
+        if (parentGate != null) {
+            if (e.getKeyCode() == KeyEvent.KEYCODE_BACK
+                    && e.getAction() == KeyEvent.ACTION_DOWN) {
+                if (listener != null) listener.onParentCancel();
+                return true;
+            }
+            return false;
+        }
         int[] value = new int[1];
         KeyRouter.Decision d = KeyRouter.decide(e.getAction(), e.getRepeatCount(),
                 semanticOf(e.getKeyCode(), value), value[0]);
         switch (d.action) {
             case KeyRouter.ACT_PASS_THROUGH: return false;
             case KeyRouter.ACT_BACK: requestExit(); return true;
+            case KeyRouter.ACT_PARENT:
+                if (listener != null) listener.onParentUnlock();
+                return true;
             case KeyRouter.ACT_CONFIRM:
                 if (phase == COMPLETE) requestNewRound();
                 else if (flow.isAnswered()) {
@@ -282,6 +354,8 @@ public final class OverlayQuizView {
     }
 
     private void requestExit() {
+        // 核心门禁：本次弹题会话一道题都没答对，返回键只提示、不摘遮罩。
+        if (!exitAllowed) { nudgeExit(); return; }
         if (exitPending) return;
         exitPending = true;
         transitionPending = true;
@@ -316,7 +390,17 @@ public final class OverlayQuizView {
     private static int semanticOf(int k, int[] value) {
         if (k == KeyEvent.KEYCODE_VOLUME_UP || k == KeyEvent.KEYCODE_VOLUME_DOWN
                 || k == KeyEvent.KEYCODE_VOLUME_MUTE) return KeyRouter.SEM_VOLUME;
-        if (k == KeyEvent.KEYCODE_BACK) return KeyRouter.SEM_BACK;
+        // 系统一般不给应用窗口派发 HOME，但派发到就一律吞掉，不让用户绕过答题。
+        if (k == KeyEvent.KEYCODE_HOME || k == KeyEvent.KEYCODE_APP_SWITCH) {
+            return KeyRouter.SEM_HOME;
+        }
+        // 家长应急出口：菜单键或数字 0，走密码验证，不是「直接返回」。
+        if (k == KeyEvent.KEYCODE_MENU || k == KeyEvent.KEYCODE_0
+                || k == KeyEvent.KEYCODE_NUMPAD_0) {
+            return KeyRouter.SEM_PARENT;
+        }
+        if (k == KeyEvent.KEYCODE_BACK || k == KeyEvent.KEYCODE_ESCAPE
+                || k == KeyEvent.KEYCODE_BUTTON_B) return KeyRouter.SEM_BACK;
         if (k == KeyEvent.KEYCODE_MEDIA_PLAY || k == KeyEvent.KEYCODE_MEDIA_PAUSE
                 || k == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE || k == KeyEvent.KEYCODE_MEDIA_NEXT
                 || k == KeyEvent.KEYCODE_MEDIA_PREVIOUS

@@ -7,8 +7,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP="$ROOT/app"
 BUILD="$ROOT/.build"
 DIST="$ROOT/dist"
-VERSION_NAME="1.0.3"
-VERSION_CODE="20"
+VERSION_NAME="1.0.4"
+VERSION_CODE="21"
 APK_NAME="PoHW-v${VERSION_NAME}.apk"
 
 : "${JAVA_HOME:=/opt/jdk17}"
@@ -131,6 +131,28 @@ grep -q 'rebuildOverlay' "$SVC"
 grep -q 'onWindowFocusChanged' "$VIEW"
 grep -q 'requestExit' "$VIEW"                   # 返回键不在按键分发栈内同步摘窗口
 grep -q 'QuizRound' "$SVC"                     # 家长设置的每轮题数进入守护服务
+# v1.0.4 P0：退出门禁（本次弹题至少答对 1 题）双端校验，禁止被改回「按返回直接走」。
+grep -q 'ExitPolicy.canExit' "$SVC"
+grep -q 'exitAllowed' "$VIEW"                # View 层持有同一门禁的放行标记
+grep -q 'ExitPolicy.tip' "$VIEW"             # 锁定 / 解锁提示由策略类统一生成
+grep -q 'sessionCorrect' "$SVC"
+grep -q 'setExitAllowed' "$VIEW"
+grep -q 'if (!exitAllowed)' "$VIEW"
+grep -q 'ExitPolicy.java' tests/run.sh
+grep -q 'ExitGateTest' tests/run.sh
+# v1.0.4 P0：暂停播放从「一次媒体键」升级为「持续重复 + 活跃会话点名暂停」。
+MPC="$APP/src/com/jager/tvquiz/MediaPauseController.java"
+KR="$APP/src/com/jager/tvquiz/KeyRouter.java"
+grep -q 'getActiveSessions' "$MPC"
+grep -q 'KEYCODE_MEDIA_PAUSE' "$MPC"
+grep -q 'PULSE_INTERVAL' "$MPC"
+grep -q 'hasSessionControl' "$SET"
+grep -q 'android:name=".MediaSessionListener"' "$APP/AndroidManifest.xml"
+grep -q 'SEM_HOME' "$KR"                       # HOME / 最近任务键必须吞掉
+grep -q 'SEM_PARENT' "$KR"                     # 家长密码应急出口
+if grep -q 'onExit() { finishQuiz(); }' "$VIEW"; then
+  echo 'FORBIDDEN: back key must not call finishQuiz without the exit gate'; exit 1
+fi
 # P1: 一次性 STOP 令牌，客户端 boolean 不再是授权依据
 grep -q 'issueStopToken' "$SVC"
 grep -q 'consumeStopToken' "$SVC"
@@ -146,7 +168,7 @@ grep -q 'QuickBootReceiver' "$APP/AndroidManifest.xml"
 grep -q 'BehaviorV601Test' tests/run.sh
 grep -q 'KeyRouter.java' tests/run.sh
 grep -q 'QuizFlow.java' tests/run.sh
-for f in Hashes Subjects AnswerPolicy BootPolicy BootSettings MediaPauseController          WrongBook WrongBookActivity OverlayQuizView KeyRouter QuizFlow QuizRound; do
+for f in Hashes Subjects AnswerPolicy BootPolicy BootSettings MediaPauseController          WrongBook WrongBookActivity OverlayQuizView KeyRouter QuizFlow QuizRound          ExitPolicy MediaSessionListener; do
   [ -f "$APP/src/com/jager/tvquiz/$f.java" ] || { echo "MISSING source: $f.java"; exit 1; }
 done
 if grep -rq -E 'v4[.]1 控制台|DeviceAdmin|startLockTask|DELETE_PACKAGES|pack_hh_|huohua|HH_API_KEY' "$APP/src"; then
@@ -239,9 +261,11 @@ apksigner sign --ks "$KS" --ks-pass "pass:$KS_PASS" --key-pass "pass:$KS_PASS" \
 apksigner verify --verbose "$DIST/$APK_NAME"
 
 # 发布证书连续性门禁：apksigner verify 只证明签名有效，不证明签名者相同。
-# 指纹不一致时 adb install -r 会因 signature mismatch 拒绝覆盖安装，
-# v1.0.3 起使用新的本地发布密钥；上游 v1.0.1 / v1.0.2 密钥未保留，不能直接覆盖旧包。
-RELEASE_CERT_SHA256="42cbf6a7009e9817cab64aa2b180d76fb722bd7e4e53c8ee4ef8a3a08ca07cdb"
+# 指纹不一致时 adb install -r 会因 signature mismatch 拒绝覆盖安装。
+# 1.0.1 / 1.0.2 / 1.0.4 共用 e5816bd…（本机构建时持有的私钥），可互相覆盖升级；
+# 1.0.3 发布时临时换用 42cbf6a…，其私钥未随仓库保存，装有 1.0.3 的设备
+# 必须先卸载才能安装 1.0.4。详见 README「安装与升级」。
+RELEASE_CERT_SHA256="e5816bddefeb145849d98fa9c75149dc26c9cc3ea0d58a717de442e48212286c"
 ACTUAL_CERT_SHA256="$(apksigner verify --print-certs "$DIST/$APK_NAME"   | sed -n 's/.*SHA-256 digest: //p' | tr -d '[:space:]')"
 if [ "${POHW_ALLOW_DEV_SIGN:-0}" = "1" ]; then
   echo "WARNING: dev-sign override; certificate NOT checked: $ACTUAL_CERT_SHA256"

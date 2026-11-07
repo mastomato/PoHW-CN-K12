@@ -42,7 +42,7 @@ apksigner sign --ks my.keystore --out dist/PoHW.apk build/out/aligned.apk
 2. **必须重新生成 `R.java`**。源码里有 `R.string.guard_channel`、`R.drawable.ic_stat_quiz` 等引用，只重编 Java 不 link 资源会编译失败。
 3. **`tests/bank_distribution_check.py` 会用正则从 `QuizDb.java` 里提取 SQL 常量**（`NAME\s*=\s*"([^"]+)";`）。改抽题逻辑时，`POOL_CORE_GRADE` 等四个常量必须保持单字符串字面量，拼成多段会测试失败。
 4. **题库版本戳必须同步**。`app/assets/quiz.db.version` 的内容要与库内 `meta.version` 完全一致，否则 App 不会重新拷贝题库，改了等于没改。
-5. **改 APK 内容必须重新签名**，且签名与原版不同，覆盖安装会因 `signature mismatch` 失败，只能先卸载。用同一把 keystore 连续升级则无此问题。
+5. **改 APK 内容必须重新签名**。签名证书不同时，覆盖安装会因 `signature mismatch` 失败，只能先卸载；用同一把 keystore 连续升级则无此问题。1.0.4 的发布证书指纹是 `e5816bddefeb145849d98fa9c75149dc26c9cc3ea0d58a717de442e48212286c`，`app/build.sh` 的 `[8/9]` 会强制比对，详见 [BUILD.md](BUILD.md)。
 
 ## 题库重建
 

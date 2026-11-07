@@ -30,6 +30,13 @@ public final class PinVerifyView {
     private Button first;
 
     public PinVerifyView(Context ctx, PinGate.Store store, Callback callback) {
+        this(ctx, store, callback, "关闭守护 · 请输入家长密码",
+                "验证通过后守护才会关闭；按返回键或点「取消」退出验证");
+    }
+
+    /** 答题遮罩里的应急出口复用同一套密码键盘，只是文案不同。 */
+    public PinVerifyView(Context ctx, PinGate.Store store, Callback callback,
+                         String title, String footer) {
         c = ctx;
         cb = callback;
         gate = new PinGate(store);
@@ -67,8 +74,7 @@ public final class PinVerifyView {
         card.setPadding(Ui.dp(ctx, 24), Ui.dp(ctx, 14), Ui.dp(ctx, 24), Ui.dp(ctx, 12));
         card.setGravity(Gravity.CENTER_HORIZONTAL);
 
-        card.addView(Ui.tv(ctx, "关闭守护 · 请输入家长密码", 21, Ui.TEXT),
-                Ui.fixed(ctx, 36));
+        card.addView(Ui.tv(ctx, title, 21, Ui.TEXT), Ui.fixed(ctx, 36));
         mask = Ui.tv(ctx, "", 28, Ui.AMBER);
         card.addView(mask, Ui.fixed(ctx, 42));
         msg = Ui.tv(ctx, "", 15, Ui.AMBER);
@@ -98,7 +104,7 @@ public final class PinVerifyView {
                     ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(ctx, 50)));
         }
 
-        Button cancel = Ui.button(ctx, "取消关闭", Ui.BTN_BG, Ui.TEXT, 16);
+        Button cancel = Ui.button(ctx, "取消", Ui.BTN_BG, Ui.TEXT, 16);
         cancel.setFocusableInTouchMode(false);
         cancel.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { cancel(); }
@@ -109,9 +115,7 @@ public final class PinVerifyView {
         nb.gravity = Gravity.CENTER_HORIZONTAL;
         card.addView(cancel, nb);
 
-        card.addView(Ui.tv(ctx,
-                "验证通过后守护才会关闭；按返回键或点「取消」退出验证",
-                13, Ui.MUTED), Ui.fixed(ctx, 26));
+        card.addView(Ui.tv(ctx, footer, 13, Ui.MUTED), Ui.fixed(ctx, 26));
 
         FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(
                 Ui.dp(ctx, 470), ViewGroup.LayoutParams.WRAP_CONTENT);

@@ -5,7 +5,7 @@
 | 依赖 | 版本 / 用途 |
 | --- | --- |
 | JDK | 17（`javac` / `keytool` / `java`） |
-| Android SDK | `platforms/android-34`（`android.jar`）、`build-tools/34.0.0`（`aapt2` / `d8` / `zipalign` / `apksigner` / `aapt`） |
+| Android SDK | `platforms/android-34`（或回退 `android-13`）、`build-tools/34.0.0`（或回退 `android-14`）提供 `android.jar`、`aapt2` / `d8` / `zipalign` / `apksigner` / `aapt` |
 | Python | 3.8+，仅题库脚本，零第三方依赖 |
 | 其他 | `bash` / `zip` / `sha256sum` |
 
@@ -20,10 +20,14 @@ command -v aapt2 javac d8 zipalign apksigner   # 应全部能找到
 ## 2. 完整构建
 
 ```bash
-bash tests/run.sh                                   # 201 个 JVM 检查（8 组）
+bash tests/run.sh                                   # 226 项 JVM 检查（9 组）
 python3 tools/quizbank/verify.py app/assets/quiz.db  # 题库独立校验
-bash app/build.sh                                    # 产出 dist/PoHW-v1.0.3.apk
+bash app/build.sh                                    # 产出 dist/PoHW-v1.0.4.apk
 ```
+
+> 工作目录路径**不能含空格**：`javac` / `d8` 的 `@argfile` 按空白分词，会把
+> `/Users/…/WorkBuddy AI/…` 拆成两个参数。遇到这种情况先把整个仓库复制到
+> 无空格路径（例如 `/tmp/pohw-build`）再构建，SDK 也用无空格的符号链接。
 
 `app/build.sh` 的十个阶段：
 
@@ -31,7 +35,7 @@ bash app/build.sh                                    # 产出 dist/PoHW-v1.0.3.a
 | --- | --- |
 | 0 | 静态守卫：版本一致性、禁止写死 `v4.1 控制台`、禁止 DeviceAdmin / 防卸载 API、禁止第三方题包残留、`allowBackup=false` |
 | 1 | 题库校验：表结构、每题选项合法性、9 年级 × 3 科 × 40 次 + 全学科 360 次随机抽题、答案重算、篡改检测 |
-| 2 | JVM 检查 8 组 201 项：PinGate / QuizLayout / StopGuard / StopState / GradeScope / FeatureV6 / BehaviorV601 / SubjectWeights |
+| 2 | JVM 检查 9 组 226 项：PinGate / QuizLayout / StopGuard / StopState / GradeScope / FeatureV6 / BehaviorV601 / SubjectWeights / ExitGate |
 | 3 | `aapt2 compile --dir res` |
 | 4 | `aapt2 link`（生成 `R.java`，打包 `assets/`） |
 | 5 | `javac -source 8 -target 8 -classpath android.jar` |
@@ -79,11 +83,11 @@ python3 tools/quizbank/verify.py app/assets/quiz.db
 
 ## 6. 为什么不用 Gradle
 
-这个工程只有一个模块、28 个 Java 文件、零第三方依赖，用 Gradle 需要 AGP、
+这个工程只有一个模块、32 个 Java 文件、零第三方依赖，用 Gradle 需要 AGP、
 Gradle Wrapper、联网拉依赖和一套额外的构建缓存。命令行链路把每一步都显式暴露出来，
 便于审查、便于在离线环境复现，也让「APK 里到底装了什么」一目了然。
 
-## 7. v1.0.1 构建门禁
+## 7. 构建门禁沿革（v1.0.1 → v1.0.4）
 
 `app/build.sh` 的 `[0/9] static guards` 改为**语义符号检查**，不再依赖精确行文本
 （旧版把 `FLAG_NOT_FOCUSABLE` 清零当成「窗口焦点已保证」是错误理解）。当前检查：
@@ -95,7 +99,7 @@ Gradle Wrapper、联网拉依赖和一套额外的构建缓存。命令行链路
 `EXTRA_STOP_VERIFIED`。另外确认 `QuickBootReceiver` 已注册、
 `KeyRouter` / `QuizFlow` / `BehaviorV601Test` 真的被编译与执行。
 
-`[0/9]` 还会执行 `python3 tests/layout_contract.py`：**109 条**源码级布局与发布契约断言，
+`[0/9]` 还会执行 `python3 tests/layout_contract.py`：**125 条**源码级布局与发布契约断言，
 覆盖首页 3×2 网格、设置页单列卡片流、等宽 weight 布局、四向 DPAD 焦点链、
 滚动容器参数（`setFillViewport` / `Ui.fill(1)` / wrap-content 子容器）、
 四槽学科权重、双路径 SQL、题目学科标签反推以及证书门禁本身；复审加固后还钉死
@@ -107,9 +111,13 @@ OTHER 池路由字面量、SQL 双份参数绑定、池保持兜底常量、`has
 `QuizDb.java` 的 `POOL_*` 命名常量提取与 Java 同源的真实 SQL，校验双份绑定与三层兜底，
 对内置题库做 9 年级 × 4 池 × 60 次池隔离、两次 5000 次配比分布、全学科关闭 0 题校验，
 以及 `FALLBACK_POOL_OK`（模拟三年级英语池 / 其他池为空，兜底仍保持学科约束、不串池）。
-`tests/mutation_suite.py` 落仓库可复核：**28 组负向变异**（含注释诱饵、破坏绑定、
-去掉池保持兜底、不带发布密钥构建、恢复 gradeWide SQL）全部被契约 / 运行时分布 / 构建门禁拦下，
+`tests/mutation_suite.py` 落仓库可复核：**35 组负向变异**（含注释诱饵、破坏绑定、
+去掉池保持兜底、不带发布密钥构建、恢复 gradeWide SQL，以及 v1.0.4 新增的 AC–AI 七组
+退出门禁 / 持续暂停回退）全部被契约 / 运行时分布 / 构建门禁拦下，
 末尾自动恢复源码哈希并用发布密钥重建 `dist/`。
+脚本默认用 `/opt/jdk17` 与 `/tmp/apkbuild/sdk`，换机器时用 `POHW_JAVA_HOME`、
+`POHW_ANDROID_HOME`、`POHW_RELEASE_KEYSTORE`、`POHW_RELEASE_KEYSTORE_PASS`
+覆盖即可，不必改脚本；同样要在**无空格路径**下运行。
 注意 `grep -q 'new int[Subjects.COUNT]'` 会把方括号当正则字符类；必须用 `grep -qF`。
 `[0/9]` 另钉死本轮结构：`ROW_GAP_DP`（设置页行间距）、`LaunchPolicy.shouldAutoGuard`
 （首页冷启动自动守护），以及 `tools/branding/make_icons.py` 必须存在；v1.0.2 起对打赏改为
@@ -119,18 +127,41 @@ OTHER 池路由字面量、SQL 双份参数绑定、池保持兜底常量、`has
 `[9/9]` 打包源码前会先删除旧的 `PoHW-src.zip`（`zip -r` 对已存在归档只做增量更新，
 旧条目不会消失），并硬性拒绝 `__pycache__` / `*.pyc` 混进交付源码包。
 
-`[2/9]` 跑 8 组共 **201** 项 JVM 检查，覆盖遥控器按键、竖排选项移动、单次判题、
-每轮题数边界和停止令牌。`[6/9]` 检查编译输入中的版本与错题库文案。
+`[2/9]` 跑 9 组共 **226** 项 JVM 检查，覆盖遥控器按键、竖排选项移动、单次判题、
+每轮题数边界、停止令牌，以及 v1.0.4 新增的 `ExitGateTest`（25 条门禁断言）。
+`[6/9]` 检查编译输入中的版本与错题库文案。
 
 覆盖安装保持签名一致：**`[8/9]` 会用 `apksigner verify --print-certs` 读取成品 APK 的
-证书 SHA-256，与 1.0.3 发布证书 `42cbf6a7009e9817cab64aa2b180d76fb722bd7e4e53c8ee4ef8a3a08ca07cdb` 比对，不一致直接 `exit 1`**。
+证书 SHA-256，与发布证书 `e5816bddefeb145849d98fa9c75149dc26c9cc3ea0d58a717de442e48212286c` 比对，不一致直接 `exit 1`**。
 `apksigner verify --verbose` 只证明签名有效、不证明签名者相同，所以这层门禁不能省。
-仅本地实验构建可显式 `POHW_ALLOW_DEV_SIGN=1` 跳过并接受醒目警告；
-正常发布必须使用与 1.0.3 相同的 keystore：
+仅本地实验构建可显式 `POHW_ALLOW_DEV_SIGN=1` 跳过并接受醒目警告；正常发布必须指向该私钥：
 
 ```bash
 JAVA_HOME=/path/to/jdk17 ANDROID_HOME=/path/to/sdk POHW_KEYSTORE=/path/to/release.keystore POHW_KEYSTORE_PASS=你的密码 bash app/build.sh
 ```
 
-不指定 `POHW_KEYSTORE` 时，脚本在 `.build/` 生成本地密钥。该目录未入库，应妥善保存；
-新设备重新生成密钥后签名会变化。上游 1.0.1 / 1.0.2 的私钥未保留，无法直接覆盖旧版，详见 README 的升级说明。
+不指定 `POHW_KEYSTORE` 时，脚本在 `.build/` 生成本地随机密钥（该目录未入库），
+签名会变化，证书门禁会拒绝。1.0.1 / 1.0.2 / 1.0.4 共用 `e5816bd…`，
+可互相覆盖升级；1.0.3 临时换用的 `42cbf6a7…` 私钥未保存，装有 1.0.3 的设备
+必须先卸载，详见 README「安装与升级」。
+
+## 8. v1.0.4 新增的静态门禁
+
+`[0/9]` 除了上面的历史断言，还钉死本次两个行为修复，避免被改回 1.0.3 的写法：
+
+```bash
+grep -q 'ExitPolicy.canExit' "$SVC"          # 服务侧二次校验
+grep -q 'exitAllowed' "$VIEW"                # View 侧放行标记
+grep -q 'ExitPolicy.tip' "$VIEW"             # 提示文案由策略类统一生成
+grep -q 'sessionCorrect' "$SVC"              # 按弹题会话累计
+grep -q 'if (!exitAllowed)' "$VIEW"
+grep -q 'getActiveSessions' "$MPC"           # 活跃会话点名暂停
+grep -q 'PULSE_INTERVAL' "$MPC"              # 重复 pause 链
+grep -q 'android:name=".MediaSessionListener"' "$APP/AndroidManifest.xml"
+grep -q 'SEM_HOME' "$KR" / 'SEM_PARENT' "$KR"
+```
+
+并显式禁止 `onExit() { finishQuiz(); }`——返回键不得在无门禁的情况下摘窗口。
+`tests/layout_contract.py` 中对应的断言用**去注释后的代码**判断，
+把实现注释掉、或把 `REQUIRED_CORRECT` 从 1 改成 0，都会被 125 条契约拦下；
+`tests/mutation_suite.py` 的 AC–AI 七组变异会实际改源码再跑一遍，确认门禁真的生效。

@@ -19,6 +19,10 @@ public final class KeyRouter {
     public static final int SEM_CONFIRM = 4;
     public static final int SEM_ANSWER = 5;   // value = 选项下标 0..3
     public static final int SEM_MOVE = 6;     // value = 方向 0左/1右/2上/3下
+    /** HOME / 最近任务：系统通常不派发给应用窗口，但只要送到就必须吞掉。 */
+    public static final int SEM_HOME = 7;
+    /** 家长应急出口（菜单键 / 数字 0）：弹出密码验证，验证通过才放行。 */
+    public static final int SEM_PARENT = 8;
 
     // 决策结果
     public static final int ACT_PASS_THROUGH = 0;
@@ -27,6 +31,7 @@ public final class KeyRouter {
     public static final int ACT_ANSWER = 3;
     public static final int ACT_MOVE = 4;
     public static final int ACT_BACK = 5;
+    public static final int ACT_PARENT = 6;
 
     public static final class Decision {
         public final int action;
@@ -43,8 +48,14 @@ public final class KeyRouter {
     public static Decision decide(int keyAction, int repeatCount, int semantic, int value) {
         // 音量键无论 DOWN/UP 都成对放行给系统，避免吞掉 UP 造成状态不对称
         if (semantic == SEM_VOLUME) return new Decision(ACT_PASS_THROUGH, 0);
+        // HOME / 最近任务键：DOWN 与 UP 都吞掉，绝不允许答题期间切回桌面绕过门禁。
+        if (semantic == SEM_HOME) return new Decision(ACT_CONSUME, 0);
         // 非 DOWN 事件一律消费，答题期间不把按键透给底层应用
         if (keyAction != ACTION_DOWN) return new Decision(ACT_CONSUME, 0);
+        if (semantic == SEM_PARENT) {
+            return repeatCount > 0 ? new Decision(ACT_CONSUME, 0)
+                    : new Decision(ACT_PARENT, 0);
+        }
         if (semantic == SEM_BACK) {
             return repeatCount > 0 ? new Decision(ACT_CONSUME, 0)
                     : new Decision(ACT_BACK, 0);

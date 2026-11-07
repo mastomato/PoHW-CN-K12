@@ -24,14 +24,19 @@ D = os.path.join(SRC, "QuizDb.java")
 O = os.path.join(SRC, "QuizOverlayService.java")
 ST = os.path.join(SRC, "SettingsStore.java")
 W = os.path.join(SRC, "SubjectWeights.java")
+V = os.path.join(SRC, "OverlayQuizView.java")
+KR = os.path.join(SRC, "KeyRouter.java")
+EP = os.path.join(SRC, "ExitPolicy.java")
+MPC = os.path.join(SRC, "MediaPauseController.java")
 B = os.path.join(ROOT, "app/build.sh")
 MF = os.path.join(ROOT, "app/AndroidManifest.xml")
 C = os.path.join(ROOT, "tests/layout_contract.py")
 LP = os.path.join(SRC, "LaunchPolicy.java")
 CHK = os.path.join(ROOT, "tests/bank_distribution_check.py")
+R = os.path.join(ROOT, "tests/run.sh")
 BK_DIR = tempfile.mkdtemp(prefix="pohw_mut_bk_")
 BK = {}
-for p in (M, S, E, D, O, ST, W, LP, B, MF, C, CHK):
+for p in (M, S, E, D, O, ST, W, LP, B, MF, C, CHK, V, KR, EP, MPC, R):
     BK[p] = os.path.join(BK_DIR, os.path.basename(p) + ".bk")
     shutil.copyfile(p, BK[p])
 ORIG = {p: hashlib.sha256(open(p, "rb").read()).hexdigest() for p in BK}
@@ -66,13 +71,16 @@ def replace(p, old, new):
 
 def env_for(with_key):
     env = os.environ.copy()
-    env["JAVA_HOME"] = "/opt/jdk17"
-    env["ANDROID_HOME"] = "/tmp/apkbuild/sdk"
+    # 默认路径保留历史值；换机器时通过 POHW_* 环境变量覆盖，无需改脚本。
+    env["JAVA_HOME"] = os.environ.get("POHW_JAVA_HOME", "/opt/jdk17")
+    env["ANDROID_HOME"] = os.environ.get("POHW_ANDROID_HOME", "/tmp/apkbuild/sdk")
     for k in ("POHW_KEYSTORE", "POHW_KEYSTORE_PASS", "POHW_ALLOW_DEV_SIGN"):
         env.pop(k, None)
     if with_key:
-        env["POHW_KEYSTORE"] = "/tmp/apkbuild/debug.keystore"
-        env["POHW_KEYSTORE_PASS"] = "android"
+        env["POHW_KEYSTORE"] = os.environ.get("POHW_RELEASE_KEYSTORE",
+                                              "/tmp/apkbuild/debug.keystore")
+        env["POHW_KEYSTORE_PASS"] = os.environ.get("POHW_RELEASE_KEYSTORE_PASS",
+                                                   "android")
     return env
 
 
@@ -116,7 +124,7 @@ MUTATIONS = [
     ("E", "block-commented subject focus", lambda: replace(S, "        wireSubjectRows();", "        /*\n        wireSubjectRows();\n        */"), False, True, False),
     ("F", "fillViewport removed", lambda: replace(S, "        sv.setFillViewport(true);", "        // sv.setFillViewport(true);"), False, True, False),
     ("G", "fixed-height scroll area", lambda: replace(S, "        root.addView(sv, Ui.fill(1));", "        root.addView(sv, Ui.fixed(this, 300));"), False, True, False),
-    ("H", "cert fingerprint changed", lambda: replace(B, "42cbf6a7009e9817cab64aa2b180d76fb722bd7e4e53c8ee4ef8a3a08ca07cdb", "deadbeef"), False, True, False),
+    ("H", "cert fingerprint changed", lambda: replace(B, "e5816bddefeb145849d98fa9c75149dc26c9cc3ea0d58a717de442e48212286c", "deadbeef"), False, True, False),
     ("I", "back to three weight slots", lambda: replace(W, "new int[Subjects.COUNT]", "new int[3]"), True, True, False),
     ("J", "hardcoded 15 percent restored",
      lambda: replace(E, "        return weights.pick(r);",
@@ -131,7 +139,7 @@ MUTATIONS = [
     ("O", "service stops passing the fourth weight",
      lambda: replace(O, "st.weight(Subjects.OTHER)", "0"), False, True, False),
     ("P", "versionCode rolled back",
-     lambda: replace(B, 'VERSION_CODE="20"', 'VERSION_CODE="19"'), False, True, False),
+     lambda: replace(B, 'VERSION_CODE="21"', 'VERSION_CODE="20"'), False, True, False),
     ("Q", "OTHER routing disabled",
      lambda: replace(D, "boolean other = s == Subjects.OTHER && allSubjects;", "boolean other = false;"), True, True, False),
     ("R", "single WHERE binding",
@@ -160,6 +168,28 @@ MUTATIONS = [
     ("AB", "donate entry reintroduced in parent settings",
      lambda: replace(S, 'note(online, "默认完全离线：',
                      'note(online, "打赏作者 · 请喝一杯咖啡"); note(online, "默认完全离线：'),
+     False, True, False),
+    # v1.0.4：退出门禁与持续暂停，任何一处回退都必须被布局契约拦下。
+    ("AC", "exit threshold lowered to zero",
+     lambda: replace(EP, "REQUIRED_CORRECT = 1", "REQUIRED_CORRECT = 0"), False, True, False),
+    ("AD", "view back key gate removed",
+     lambda: replace(V, "if (!exitAllowed) { nudgeExit(); return; }",
+                     "if (false) { nudgeExit(); return; }"), False, True, False),
+    ("AE", "quiz-popup reset of the session counter removed",
+     lambda: replace(O, "\n        sessionCorrect = 0;",
+                     "\n        // sessionCorrect = 0;"), False, True, False),
+    ("AF", "repeated pause dispatch removed",
+     lambda: replace(MPC, "handler.postDelayed(pulse, FIRST_DELAY);",
+                     "// pulse disabled"), False, True, False),
+    ("AG", "notification listener service removed from manifest",
+     lambda: replace(MF, 'android:name=".MediaSessionListener"',
+                     'android:name=".NoMediaSessionListener"'), False, True, False),
+    ("AH", "HOME key passed through to launcher",
+     lambda: replace(KR, "if (semantic == SEM_HOME) return new Decision(ACT_CONSUME, 0);",
+                     "if (semantic == SEM_HOME) return new Decision(ACT_PASS_THROUGH, 0);"),
+     False, True, False),
+    ("AI", "exit gate JVM test unwired",
+     lambda: replace(R, "ExitGateTest.java", "ExitGateTest.class"),
      False, True, False),
 ]
 

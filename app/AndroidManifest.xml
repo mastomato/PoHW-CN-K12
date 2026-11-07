@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.jager.tvquiz"
-    android:versionCode="20"
-    android:versionName="1.0.3">
+    android:versionCode="21"
+    android:versionName="1.0.4">
 
     <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="33" />
 
@@ -71,6 +71,17 @@
             android:name=".QuizOverlayService"
             android:exported="false"
             android:enabled="true" />
+
+        <!-- 可选：家长在「通知使用权」里授权后，才能枚举活跃 MediaSession 并点名暂停播放器。
+             未授权时 MediaPauseController 自动跳过该路径，不读取任何通知内容。 -->
+        <service
+            android:name=".MediaSessionListener"
+            android:exported="true"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
 
         <!-- 仅 BOOT_COMPLETED 受 RECEIVE_BOOT_COMPLETED 保护，且是 Android 12+
              后台启动前台服务的豁免广播；QUICKBOOT 拆到单独 receiver。 -->

@@ -89,6 +89,13 @@ public class QuizOverlayService extends Service {
     private int interval = 30;
     private String lastKey = "";
     private long nextSyncAt = 0L;
+    /**
+     * 本次弹题会话内累计答对题数。与 QuizRound.correct() 分开记账：
+     * 开新一轮会 reset 轮次成绩，但退出门禁看的是整个会话，不能倒退重新上锁。
+     */
+    private int sessionCorrect = 0;
+    /** 家长通过密码验证后的单次放行，用完即清。 */
+    private boolean parentOverride = false;
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     // 窗口焦点重抢状态机
@@ -101,6 +108,12 @@ public class QuizOverlayService extends Service {
         @Override public void onNext() { nextQuestion(); }
         @Override public void onNewRound() { newRound(); }
         @Override public void onExit() { finishQuiz(); }
+        @Override public void onParentUnlock() {
+            handler.post(new Runnable() {
+                @Override public void run() { showParentGate(); }
+            });
+        }
+        @Override public void onParentCancel() { hideParentGate(); }
         @Override public void onWindowFocus(boolean hasFocus) { onQuizWindowFocus(hasFocus); }
     };
 
@@ -143,6 +156,14 @@ public class QuizOverlayService extends Service {
             if (!quizShowing) {
                 remainSec--;
                 if (remainSec <= 0) showQuiz();
+            } else {
+                // 未满足退出门禁时，遮罩不许消失：HOME / 系统对话框偶尔会把覆盖窗口
+                // 摘掉，这里每秒巡检一次，掉线就重建，同时再压一次暂停信号。
+                if (!parentOverride && !ExitPolicy.canExit(sessionCorrect)
+                        && quizView != null && !quizView.isAttached()) {
+                    rebuildOverlay();
+                    if (media != null) media.reassert();
+                }
             }
             long now = System.currentTimeMillis();
             if (now >= nextSyncAt && !st.bankUrl().isEmpty()) {
@@ -369,10 +390,15 @@ public class QuizOverlayService extends Service {
             return;
         }
         round.reset(st.roundCount());
+        // 新一次弹题重置会话门禁：上次的答对成绩不继承。
+        sessionCorrect = 0;
+        parentOverride = false;
         st.bumpQuestioned();
 
         // 不复用 View：反复 add/remove 会让窗口焦点状态不可预测。
         final OverlayQuizView view = new OverlayQuizView(this, listener);
+        view.setParentPinSet(st.hasPin());
+        view.setExitAllowed(ExitPolicy.canExit(sessionCorrect));
         view.bind(current, metaFor(current), round.questionNumber(), round.total());
         quizView = view;
         focusRetry = 0;
@@ -427,6 +453,8 @@ public class QuizOverlayService extends Service {
             focusRetry = 0;
             focusRecovering = false;
             quizView.focusFirst();
+            // 覆盖层被系统弹窗压过再回来时，播放器可能已自行续播，补压一次。
+            if (media != null) media.reassert();
             return;
         }
         // focusCheck 执行期间（updateViewLayout / remove+add）自身会触发 false 回调，
@@ -462,6 +490,9 @@ public class QuizOverlayService extends Service {
         if (outcome == QuizFlow.CORRECT) {
             st.bumpCorrect();
             round.record(true);
+            sessionCorrect++;
+            // 立刻解锁返回键：答对一题即可退出，不必做完一整轮。
+            quizView.setExitAllowed(ExitPolicy.canExit(sessionCorrect));
             play(correctSound);
             quizView.correct(current.answerIndex, current.explain);
             return;
@@ -517,9 +548,51 @@ public class QuizOverlayService extends Service {
 
     private void finishQuiz() {
         if (!quizShowing) return;
+        // 第二道防线：即使 View 层被改坏 / 有别的路径调 onExit，服务也不放行。
+        if (!parentOverride && !ExitPolicy.canExit(sessionCorrect)) {
+            if (quizView != null) quizView.nudgeExit();
+            return;
+        }
         hideQuiz();
         if (media != null) media.quizFinished(st);
         remainSec = interval;
+        parentOverride = false;
+    }
+
+    /** 家长应急出口：菜单键 / 数字 0 触发，密码正确才允许退出本次答题。 */
+    private void showParentGate() {
+        if (!quizShowing || quizView == null || quizView.hasParentGate()) return;
+        if (!st.hasPin()) {
+            Toast.makeText(this, "未设置家长密码：请在 APP 的家长设置里先设置",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        PinVerifyView gate = new PinVerifyView(this, st,
+                new PinVerifyView.Callback() {
+                    @Override public void onVerified() {
+                        // 摘窗口必须离开按键分发栈后异步执行，和 requestExit 同理。
+                        handler.post(new Runnable() {
+                            @Override public void run() {
+                                parentOverride = true;
+                                if (quizView != null) quizView.hideParentGate();
+                                finishQuiz();
+                            }
+                        });
+                    }
+                    @Override public void onCancel() {
+                        handler.post(new Runnable() {
+                            @Override public void run() { hideParentGate(); }
+                        });
+                    }
+                },
+                "家长解锁 · 请输入密码",
+                "验证通过可退出本次答题；按返回键或点「取消」继续作答");
+        quizView.showParentGate(gate.view());
+        gate.requestFocusFirst();
+    }
+
+    private void hideParentGate() {
+        if (quizView != null) quizView.hideParentGate();
     }
 
     private void hideQuiz() {

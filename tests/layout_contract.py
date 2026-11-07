@@ -127,7 +127,7 @@ check("RELEASE_CERT_SHA256" in b and "ACTUAL_CERT_SHA256" in b,
       "build compares actual APK certificate to the release certificate")
 check("apksigner verify --print-certs" in b,
       "certificate is read from the signed APK, not from the keystore alone")
-check("42cbf6a7009e9817cab64aa2b180d76fb722bd7e4e53c8ee4ef8a3a08ca07cdb" in b,
+check("e5816bddefeb145849d98fa9c75149dc26c9cc3ea0d58a717de442e48212286c" in b,
       "pinned release certificate SHA-256 is present")
 check("POHW_ALLOW_DEV_SIGN" in b,
       "dev-sign override is explicit and opt-in")
@@ -178,8 +178,8 @@ check("SubjectWeights.MAX_WEIGHT + 1" in raw_s,
       "UI weight cycle is driven by the same max weight")
 check("Subjects.norm(subject)" in _st and '"w" + s' in _st,
       "settings store persists all four normalized slots")
-check('android:versionCode="20"' in _mf, "manifest versionCode advances to 20")
-check('VERSION_CODE="20"' in b, "build script versionCode advances to 20")
+check('android:versionCode="21"' in _mf, "manifest versionCode advances to 21")
+check('VERSION_CODE="21"' in b, "build script versionCode advances to 21")
 check("SubjectWeights.java" in _run and "SubjectWeightsTest" in _run,
       "new weights class and JVM test are wired into the test runner")
 check("bank_distribution_check.py" in b,
@@ -278,5 +278,50 @@ check("make_icons.py" in b, "build gate verifies the branding generator")
 # ---- 题库说明位置：离线说明必须紧跟「检查题库更新」按钮 ----
 check(raw_s.find('"检查题库更新"') < raw_s.find('"默认完全离线：'),
       "offline note sits directly under the bank-update button")
+
+
+# ---- v1.0.4 行为红线：至少答对一题才能返回 + 持续暂停播放 ----
+_src = os.path.join(ROOT, "app/src/com/jager/tvquiz")
+_v = strip_comments(read(os.path.join(_src, "OverlayQuizView.java")))
+_svc = strip_comments(read(os.path.join(_src, "QuizOverlayService.java")))
+_kr = strip_comments(read(os.path.join(_src, "KeyRouter.java")))
+_mpc = strip_comments(read(os.path.join(_src, "MediaPauseController.java")))
+_ep = strip_comments(read(os.path.join(_src, "ExitPolicy.java")))
+_rv = read(os.path.join(_src, "OverlayQuizView.java"))
+
+check("public static boolean canExit(int sessionCorrect)" in _ep
+      and "REQUIRED_CORRECT = 1" in _ep,
+      "exit gate is a single pure-Java rule requiring one correct answer")
+check("sessionCorrect" in _svc and "\n        sessionCorrect = 0;" in _svc,
+      "service resets the correct-answer counter on every new quiz popup")
+check("ExitPolicy.canExit(sessionCorrect)" in _svc,
+      "service re-checks the exit gate instead of trusting the view")
+check("if (!exitAllowed) { nudgeExit(); return; }" in _v,
+      "back key is swallowed until the exit gate opens")
+check("setExitAllowed(ExitPolicy.canExit(sessionCorrect))" in _svc,
+      "a correct answer unlocks the back key immediately")
+check("换题不清 exitAllowed" in _rv,
+      "binding a new question cannot re-lock an already unlocked session")
+check("KeyRouter.SEM_HOME" in _v and "ACT_PARENT" in _v,
+      "HOME is swallowed and the parent PIN escape has its own semantic")
+check("SEM_HOME = 7" in _kr and "SEM_PARENT = 8" in _kr,
+      "key router declares both new semantics")
+check("if (semantic == SEM_HOME) return new Decision(ACT_CONSUME, 0);" in _kr,
+      "HOME down AND up are consumed")
+check('android:name=".MediaSessionListener"' in _mf,
+      "notification-listener service is declared for session-level pause")
+check("getActiveSessions" in _mpc and "tc.pause()" in _mpc,
+      "all active MediaSessions are paused by name")
+check("PULSE_INTERVAL" in _mpc and "handler.postDelayed(pulse, FIRST_DELAY)" in _mpc,
+      "MEDIA_PAUSE is re-dispatched while the quiz is showing")
+check("只挂一条链" in read(os.path.join(_src, "MediaPauseController.java")),
+      "pause pulse stays a single chain (no exponential duplicate dispatch)")
+check("hasSessionControl" in raw_s and "ACTION_NOTIFICATION_LISTENER_SETTINGS" in raw_s,
+      "parent settings expose the notification-access opt-in")
+check("ExitPolicy.java" in _run and "ExitGateTest.java" in _run
+      and "ExitGateTest; do" in _run,
+      "the exit gate is compiled and executed by the JVM suite")
+check("至少答对 1 题" in raw_s,
+      "parent settings explain the one-correct-answer rule")
 
 print("LAYOUT_CONTRACT_OK total=%d" % TOTAL)
