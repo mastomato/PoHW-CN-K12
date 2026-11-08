@@ -2,7 +2,7 @@
 
 基于 [jagerzhang/PoHW](https://github.com/jagerzhang/PoHW) 的 Android TV 答题守护应用。守护服务会按家长设置的间隔在其他应用上方显示答题页；题库离线可用，支持小学和初中多个学科。
 
-**当前版本：1.0.5（versionCode 22）** · 本地新包 `dist/PoHW-v1.0.5.apk` · [上一版 1.0.4 Release](https://github.com/mastomato/PoHW-CN-K12/releases/tag/v1.0.4-cn.1)
+**当前版本：1.0.5（versionCode 22）** · [下载 APK](https://github.com/mastomato/PoHW-CN-K12/releases/download/v1.0.5-cn.1/PoHW-v1.0.5.apk) · [查看 Release](https://github.com/mastomato/PoHW-CN-K12/releases/tag/v1.0.5-cn.1) · 本地新包 `dist/PoHW-v1.0.5.apk`
 
 ## 1.0.5 更新：门禁可配 + 全站大字版
 
@@ -40,7 +40,7 @@ adb connect <电视IP>:5555
 adb install -r PoHW-v1.0.5.apk
 ```
 
-**签名与升级（重要）**：1.0.4 使用发布证书 `e5816bdd…212286c`，与上游 1.0.1 / 1.0.2 相同，`adb install -r` 可直接覆盖这两个版本，家长设置、答题统计和错题库会保留。1.0.3 发布时临时换用 `42cbf6a7…07cdb`，该私钥未保存在本仓库或当前构建环境中，**装有 1.0.3 的设备无法覆盖安装 1.0.4 / 1.0.5**，需先卸载：
+**签名与升级（重要）**：1.0.5 沿用 1.0.4 的发布证书 `e5816bdd…212286c`，与上游 1.0.1 / 1.0.2 相同，`adb install -r` 可直接覆盖 1.0.1 / 1.0.2 / 1.0.4，家长设置、答题统计和错题库会保留。1.0.3 发布时临时换用 `42cbf6a7…07cdb`，该私钥未保存在本仓库或当前构建环境中，**装有 1.0.3 的设备无法覆盖安装 1.0.4 / 1.0.5**，需先卸载：
 
 ```bash
 adb uninstall com.jager.tvquiz
