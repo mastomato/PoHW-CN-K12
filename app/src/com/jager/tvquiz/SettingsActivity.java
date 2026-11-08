@@ -34,12 +34,12 @@ public class SettingsActivity extends Activity {
     private static final String[] PRESETS = {"", "http://10.0.2.2:8000/", "http://127.0.0.1:8000/"};
     private static final int CARD_BG = Ui.CARD;
     /** 居中窄栏的左右留白：卡片与底部操作条共用，保证视觉对齐。 */
-    private static final int GUTTER_DP = 88;
+    private static final int GUTTER_DP = 48;
     /** 行标签宽度：普通行与学科行分别取不同值，避免右侧取值被压窄。 */
-    private static final int LABEL_DP = 150;
-    private static final int SUBJ_LABEL_DP = 100;
+    private static final int LABEL_DP = 200;
+    private static final int SUBJ_LABEL_DP = 130;
     /** 卡片内行、按钮、说明共用的上下留白（相邻两行间距 = 上下各一半相加）。 */
-    private static final int ROW_GAP_DP = 12;
+    private static final int ROW_GAP_DP = 14;
 
     private SettingsStore st;
     private PinGate gate;
@@ -54,7 +54,7 @@ public class SettingsActivity extends Activity {
     private TextView gateTitle, gateMask, gateMsg, gateState, bankStatus, pinState;
     private Button firstGateBtn;
     private EditText urlEdit;
-    private Button rowGrade, rowTerm, rowInterval, rowRoundCount, rowScope, rowSync;
+    private Button rowGrade, rowTerm, rowInterval, rowRoundCount, rowRequiredCorrect, rowScope, rowSync;
     /** 学科设置复合行：左按钮切教材版本，右按钮切题目配比。 */
     private Button[] rowEd = new Button[Subjects.COUNT];
     private Button[] rowWt = new Button[Subjects.COUNT];
@@ -116,21 +116,21 @@ public class SettingsActivity extends Activity {
         l.setPadding(Ui.dp(this, 40), Ui.dp(this, 12), Ui.dp(this, 40), Ui.dp(this, 12));
         l.setGravity(Gravity.CENTER_HORIZONTAL);
 
-        gateTitle = Ui.tv(this, "", 24, Ui.TEXT);
-        l.addView(gateTitle, Ui.fixed(this, 38));
-        gateMask = Ui.tv(this, "", 30, Ui.AMBER);
-        l.addView(gateMask, Ui.fixed(this, 44));
-        gateMsg = Ui.tv(this, "", 15, Ui.AMBER);
-        l.addView(gateMsg, Ui.fixed(this, 30));
-        gateState = Ui.tv(this, "", 13, Ui.MUTED);
-        l.addView(gateState, Ui.fixed(this, 28));
+        gateTitle = Ui.tv(this, "", 26, Ui.TEXT);
+        l.addView(gateTitle, Ui.fixed(this, 50));
+        gateMask = Ui.tv(this, "", 34, Ui.AMBER);
+        l.addView(gateMask, Ui.fixed(this, 58));
+        gateMsg = Ui.tv(this, "", 18, Ui.AMBER);
+        l.addView(gateMsg, Ui.fixed(this, 40));
+        gateState = Ui.tv(this, "", 16, Ui.MUTED);
+        l.addView(gateState, Ui.fixed(this, 38));
 
         String[] keys = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "清空", "0", "确定"};
         for (int row = 0; row < 4; row++) {
             LinearLayout r = Ui.hbox(this);
             for (int col = 0; col < 3; col++) {
                 final String k = keys[row * 3 + col];
-                Button btn = Ui.button(this, k, Ui.BTN_BG, Ui.TEXT, 20);
+                Button btn = Ui.button(this, k, Ui.BTN_BG, Ui.TEXT, 22);
                 btn.setFocusableInTouchMode(false);
                 btn.setOnClickListener(new View.OnClickListener() {
                     @Override public void onClick(View v) { onKey(k); }
@@ -138,18 +138,18 @@ public class SettingsActivity extends Activity {
                 Ui.focus(btn, this, Ui.BTN_BG, Ui.TEXT);
                 if (firstGateBtn == null) firstGateBtn = btn;
                 LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
-                        Ui.dp(this, 120), Ui.dp(this, 46));
-                p.setMargins(Ui.dp(this, 6), Ui.dp(this, 3), Ui.dp(this, 6), Ui.dp(this, 3));
+                        Ui.dp(this, 140), Ui.dp(this, 68));
+                p.setMargins(Ui.dp(this, 8), Ui.dp(this, 4), Ui.dp(this, 8), Ui.dp(this, 4));
                 r.addView(btn, p);
             }
-            l.addView(r, Ui.fixed(this, 54));
+            l.addView(r, Ui.fixed(this, 78));
         }
         l.addView(Ui.tv(this,
                 "遥控器可直接按数字键输入；也可以点屏幕键盘，输完点「确定」。",
-                13, Ui.MUTED), Ui.fixed(this, 26));
+                16, Ui.MUTED), Ui.fixed(this, 36));
         l.addView(Ui.tv(this,
                 "忘记密码请在电脑执行：adb shell pm clear com.jager.tvquiz（会清空全部设置与统计）",
-                13, Ui.MUTED), Ui.fixed(this, 26));
+                16, Ui.MUTED), Ui.fixed(this, 36));
         return l;
     }
 
@@ -190,31 +190,31 @@ public class SettingsActivity extends Activity {
     /** 分组卡片：顶部「色条 + 序号标题」，内部逐行堆叠，卡片之间留呼吸间距。 */
     private LinearLayout addCard(LinearLayout parent, String title) {
         LinearLayout card = Ui.vbox(this);
-        card.setBackground(Ui.round(CARD_BG, 14, this));
-        card.setPadding(Ui.dp(this, 18), Ui.dp(this, 8), Ui.dp(this, 18), Ui.dp(this, 12));
+        card.setBackground(Ui.round(CARD_BG, Ui.RADIUS_DP, this));
+        card.setPadding(Ui.dp(this, 24), Ui.dp(this, 12), Ui.dp(this, 24), Ui.dp(this, 16));
         LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        cp.setMargins(0, Ui.dp(this, 6), 0, Ui.dp(this, 14));
+        cp.setMargins(0, Ui.dp(this, 8), 0, Ui.dp(this, 18));
         parent.addView(card, cp);
 
         LinearLayout head = Ui.hbox(this);
         head.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
         View bar = new View(this);
         bar.setBackground(Ui.round(Ui.AMBER, 2, this));
-        head.addView(bar, new LinearLayout.LayoutParams(Ui.dp(this, 4), Ui.dp(this, 18)));
-        TextView tv = Ui.tv(this, title, 16, Ui.TEXT, Gravity.LEFT);
+        head.addView(bar, new LinearLayout.LayoutParams(Ui.dp(this, 5), Ui.dp(this, 24)));
+        TextView tv = Ui.tv(this, title, 20, Ui.TEXT, Gravity.LEFT);
         tv.setPadding(Ui.dp(this, 10), 0, 0, 0);
         head.addView(tv, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         // 标题行随系统字体缩放自适应，不写死 28dp 高度。
-        head.setMinimumHeight(Ui.dp(this, 28));
+        head.setMinimumHeight(Ui.dp(this, 38));
         card.addView(head, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         return card;
     }
 
     private void note(LinearLayout parent, String text) {
-        TextView t = Ui.tv(this, text, 12, Ui.MUTED, Gravity.LEFT);
+        TextView t = Ui.tv(this, text, 16, Ui.MUTED, Gravity.LEFT);
         t.setLineSpacing(0, 1.15f);
         t.setPadding(0, Ui.dp(this, 3), 0, Ui.dp(this, 2));
         parent.addView(t, rowLp());
@@ -242,14 +242,14 @@ public class SettingsActivity extends Activity {
     private Button addRow(LinearLayout parent, String label, View.OnClickListener l) {
         LinearLayout row = Ui.hbox(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.addView(Ui.tv(this, label, 15, Ui.TEXT, Gravity.LEFT),
+        row.addView(Ui.tv(this, label, 19, Ui.TEXT, Gravity.LEFT),
                 new LinearLayout.LayoutParams(Ui.dp(this, LABEL_DP),
                         ViewGroup.LayoutParams.WRAP_CONTENT));
-        Button b = Ui.button(this, "", Ui.BTN_BG, Ui.TEXT, 14);
+        Button b = Ui.button(this, "", Ui.BTN_BG, Ui.TEXT, 18);
         b.setSingleLine(false);
         b.setMaxLines(2);
         b.setEllipsize(null);
-        b.setMinHeight(Ui.dp(this, 44));
+        b.setMinHeight(Ui.dp(this, 60));
         b.setPadding(Ui.dp(this, 10), Ui.dp(this, 2), Ui.dp(this, 10), Ui.dp(this, 2));
         b.setOnClickListener(l);
         Ui.focus(b, this, Ui.BTN_BG, Ui.TEXT);
@@ -263,10 +263,10 @@ public class SettingsActivity extends Activity {
 
     private void addButton(LinearLayout parent, String label, int bg, View.OnClickListener l) {
         int fg = Ui.isLightButton(bg) ? Ui.TEXT : Ui.CARD;
-        Button b = Ui.button(this, label, bg, fg, 15);
+        Button b = Ui.button(this, label, bg, fg, 19);
         b.setOnClickListener(l);
         Ui.focus(b, this, bg, fg);
-        b.setMinHeight(Ui.dp(this, 44));
+        b.setMinHeight(Ui.dp(this, 60));
         parent.addView(b, rowLp());
         track(b);
     }
@@ -276,10 +276,10 @@ public class SettingsActivity extends Activity {
         root.setBackgroundColor(Ui.BG);
         root.setPadding(Ui.dp(this, 36), Ui.dp(this, 10), Ui.dp(this, 36), Ui.dp(this, 8));
 
-        root.addView(Ui.tv(this, "家长设置", 24, Ui.TEXT), Ui.fixed(this, 36));
-        pinState = Ui.tv(this, "", 13, Ui.MUTED, Gravity.LEFT);
+        root.addView(Ui.tv(this, "家长设置", 28, Ui.TEXT), Ui.fixed(this, 48));
+        pinState = Ui.tv(this, "", 16, Ui.MUTED, Gravity.LEFT);
         pinState.setPadding(Ui.dp(this, GUTTER_DP), 0, 0, 0);
-        root.addView(pinState, Ui.fixed(this, 22));
+        root.addView(pinState, Ui.fixed(this, 30));
 
         ScrollView sv = new ScrollView(this);
         sv.setFillViewport(true);
@@ -320,6 +320,13 @@ public class SettingsActivity extends Activity {
                 refreshRows();
             }
         });
+        rowRequiredCorrect = addRow(quiz, "答对才能返回", new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                int next = st.requiredCorrect() % ExitPolicy.MAX_REQUIRED_CORRECT + 1;
+                st.requiredCorrect(next);
+                refreshRows();
+            }
+        });
         rowScope = addRow(quiz, "出题范围", new View.OnClickListener() {
             @Override public void onClick(View v) { st.allSubjects(!st.allSubjects()); refreshRows(); }
         });
@@ -329,8 +336,8 @@ public class SettingsActivity extends Activity {
                 refreshRows();
             }
         });
-        note(quiz, "点击右侧取值即可循环切换，离开设置页时统一保存。");
-        note(quiz, "每轮完成后显示成绩；按确定键开始下一轮，本次至少答对 1 题后返回键才生效。");
+        note(quiz, "点击右侧取值即可循环切换，离开设置页时统一保存。「答对才能返回」可在 1–10 题之间调整，默认 5 题。");
+        note(quiz, "每轮完成后显示成绩；按确定开始下一轮；本次答对题数达到上面设定的阈值后，返回键才生效。");
         note(quiz, "学期只影响内置题库的抽题范围：选「上册 / 下册」时优先出该学期与全学年通用的题；"
                 + "题库未标注学期的题始终参与，该学期题量不足时自动放宽到同年级同学科。");
 
@@ -370,7 +377,7 @@ public class SettingsActivity extends Activity {
                 + "需家长自行开启并允许厂商自启动权限后，才会随开机拉起。");
         note(boot, "答题时按住不放的暂停：持续占用音频焦点，并每 2.5 秒补发一次暂停键；"
                 + "再打开「通知使用权」（点上面那行）后，可直接对每个正在播放的 App 点名暂停，命中率最高。仍属 best-effort。");
-        note(boot, "本次弹题至少答对 1 题才能按返回退出；家长可按遥控器菜单键或数字 0 输密码退出。");
+        note(boot, "本次弹题需答对上面设定的题数才能按返回退出；家长可按遥控器菜单键或数字 0 输密码退出。");
 
         // ---- 04 错题库 ----
         LinearLayout wrong = addCard(col, "04  错题库");
@@ -386,7 +393,7 @@ public class SettingsActivity extends Activity {
         urlEdit = new EditText(this);
         urlEdit.setSingleLine(true);
         urlEdit.setHint("https://your-server/  (index.json 所在目录)");
-        urlEdit.setTextSize(14);
+        urlEdit.setTextSize(Ui.scaledSp(18));
         urlEdit.setTextColor(Ui.TEXT);
         urlEdit.setHintTextColor(Ui.MUTED);
         urlEdit.setBackground(Ui.roundBorder(Ui.BTN_BG, Ui.BORDER, 8, this));
@@ -400,7 +407,7 @@ public class SettingsActivity extends Activity {
             }
         });
         online.addView(urlEdit, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 42)));
+                ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 58)));
         track(urlEdit);
 
         addButton(online, "填入示例地址", Ui.BTN_BG, new View.OnClickListener() {
@@ -410,9 +417,9 @@ public class SettingsActivity extends Activity {
             }
         });
 
-        bankStatus = Ui.tv(this, "", 13, Ui.MUTED, Gravity.LEFT);
+        bankStatus = Ui.tv(this, "", 17, Ui.MUTED, Gravity.LEFT);
         bankStatus.setPadding(Ui.dp(this, 10), Ui.dp(this, 6), Ui.dp(this, 10), Ui.dp(this, 6));
-        bankStatus.setMinHeight(Ui.dp(this, 72));
+        bankStatus.setMinHeight(Ui.dp(this, 96));
         bankStatus.setBackground(Ui.round(Ui.BTN_BG, 10, this));
         online.addView(bankStatus, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -448,21 +455,21 @@ public class SettingsActivity extends Activity {
         LinearLayout footer = Ui.hbox(this);
         footer.setGravity(Gravity.CENTER_VERTICAL);
         footer.setPadding(Ui.dp(this, GUTTER_DP), 0, Ui.dp(this, GUTTER_DP), 0);
-        btnChangePin = Ui.button(this, "修改家长密码", Ui.BTN_BG, Ui.TEXT, 15);
+        btnChangePin = Ui.button(this, "修改家长密码", Ui.BTN_BG, Ui.TEXT, 19);
         btnChangePin.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { gate.startChange(); enterGate(false); }
         });
         Ui.focus(btnChangePin, this, Ui.BTN_BG, Ui.TEXT);
-        btnSave = Ui.button(this, "保存并返回", Ui.PURPLE, Ui.CARD, 15);
+        btnSave = Ui.button(this, "保存并返回", Ui.PURPLE, Ui.CARD, 19);
         btnSave.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { save(); }
         });
         Ui.focus(btnSave, this, Ui.PURPLE, Ui.CARD);
-        LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(0, Ui.dp(this, 44), 1f);
+        LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(0, Ui.dp(this, 60), 1f);
         fp.setMargins(Ui.dp(this, 5), Ui.dp(this, 4), Ui.dp(this, 5), Ui.dp(this, 4));
         footer.addView(btnChangePin, fp);
         footer.addView(btnSave, fp);
-        root.addView(footer, Ui.fixed(this, 54));
+        root.addView(footer, Ui.fixed(this, 70));
         track(btnChangePin, btnSave);
         btnChangePin.setNextFocusRightId(ensureId(btnSave));
         btnSave.setNextFocusLeftId(ensureId(btnChangePin));
@@ -533,15 +540,15 @@ public class SettingsActivity extends Activity {
     private void addSubjectRow(LinearLayout parent, final int subj) {
         LinearLayout row = Ui.hbox(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.addView(Ui.tv(this, Subjects.name(subj), 14, Ui.TEXT, Gravity.LEFT),
+        row.addView(Ui.tv(this, Subjects.name(subj), 18, Ui.TEXT, Gravity.LEFT),
                 new LinearLayout.LayoutParams(
                         Ui.dp(this, SUBJ_LABEL_DP), ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        Button ed = Ui.button(this, "", Ui.BTN_BG, Ui.TEXT, 14);
+        Button ed = Ui.button(this, "", Ui.BTN_BG, Ui.TEXT, 18);
         ed.setSingleLine(false);
         ed.setMaxLines(2);
         ed.setEllipsize(null);
-        ed.setMinHeight(Ui.dp(this, 44));
+        ed.setMinHeight(Ui.dp(this, 60));
         ed.setPadding(Ui.dp(this, 8), Ui.dp(this, 2), Ui.dp(this, 8), Ui.dp(this, 2));
         ed.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
@@ -554,11 +561,11 @@ public class SettingsActivity extends Activity {
         row.addView(ed, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 2f));
 
-        Button wt = Ui.button(this, "", Ui.BTN_BG, Ui.TEXT, 14);
+        Button wt = Ui.button(this, "", Ui.BTN_BG, Ui.TEXT, 18);
         wt.setSingleLine(false);
         wt.setMaxLines(2);
         wt.setEllipsize(null);
-        wt.setMinHeight(Ui.dp(this, 44));
+        wt.setMinHeight(Ui.dp(this, 60));
         wt.setPadding(Ui.dp(this, 8), Ui.dp(this, 2), Ui.dp(this, 8), Ui.dp(this, 2));
         // 四科都可配权：全学科关闭时第 4 槽仍可预设，只是不参与抽题。
         wt.setOnClickListener(new View.OnClickListener() {
@@ -624,6 +631,7 @@ public class SettingsActivity extends Activity {
         rowTerm.setText(st.termLabel());
         rowInterval.setText(intervalLabel());
         rowRoundCount.setText(st.roundCount() + " 题");
+        rowRequiredCorrect.setText(st.requiredCorrect() + " 题 · 答对方可返回");
         rowScope.setText(st.allSubjects() ? "全学科（含物理/历史等）" : "仅数 / 语 / 英");
         rowSync.setText(SettingsStore.SYNC_LABELS[st.syncIndex()]);
         for (int s = 0; s < Subjects.COUNT; s++) {

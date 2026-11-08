@@ -76,13 +76,13 @@ check(m.count("new Button[GRID_COLS]") == 2, "home has exactly 2 grid rows")
 check(len(re.findall(r"actionButton\(row[12],", m)) == 6, "home has exactly 6 action buttons")
 check("row3" not in m, "legacy third button row removed")
 check(m.count("l.addView(row") == 2, "exactly two grid rows added to the page")
-check("new LinearLayout.LayoutParams(0, Ui.dp(this, 54), 1f)" in m,
-      "home buttons are equal-width instead of hardcoded 190dp")
+check("new LinearLayout.LayoutParams(0, Ui.dp(this, 68), 1f)" in m,
+      "home buttons are equal-width and tall enough for larger labels")
 check(m.count("wireGrid()") == 2, "home declares and calls the grid focus chain")
 for direction in ("setNextFocusLeftId", "setNextFocusRightId",
                   "setNextFocusUpId", "setNextFocusDownId"):
     check(direction in m, "home focus chain includes " + direction)
-check("Ui.fixed(this, 46)" in m, "home title has enough height to avoid clipping")
+check("Ui.fixed(this, 64)" in m, "home title has enough height for the large type scale")
 check("getPackageInfo" in m, "home version still read from PackageManager")
 
 # ---- 家长设置：单列卡片流 ----
@@ -95,13 +95,13 @@ check(s.count("wireVerticalFocus()") == 2, "settings declares and calls the vert
 check(s.count("wireSubjectRows()") == 2, "subject rows keep their left/right chain")
 check("setNextFocusUpId" in s and "setNextFocusDownId" in s,
       "settings vertical chain is explicit across nested cards")
-check("root.addView(footer, Ui.fixed(this, 54))" in s,
+check("root.addView(footer, Ui.fixed(this, 70))" in s,
       "save / change-pin footer stays fixed while the form scrolls")
 check(s.count('"保存并返回"') == 1, "exactly one save action")
 check(s.count('"检查题库更新"') == 1, "bank update entry lives in settings only")
 check("track(urlEdit)" in s, "URL field participates in the focus chain")
-check("setMinHeight(Ui.dp(this, 72))" in s,
-      "bank status uses min-height instead of a clipping fixed height")
+check("setMinHeight(Ui.dp(this, 96))" in s,
+      "bank status keeps a large min-height for the bigger text")
 check("Ui.dp(this, GUTTER_DP)" in s, "cards and footer share one centred gutter")
 check("ViewGroup.LayoutParams.WRAP_CONTENT, 1f" in s,
       "row values fill the narrow column by weight and wrap by content")
@@ -114,8 +114,8 @@ check("shell.addView(col" in s and "ViewGroup.LayoutParams.WRAP_CONTENT" in s,
 check(s.count("Ui.fill(1)") == 1, "exactly one weighted scroll area, footer stays fixed")
 check("root.addView(sv, Ui.fixed(" not in s and "setFillViewport(false)" not in s,
       "no fixed-height / non-fill scroll regression")
-check(s.count("setMinHeight(Ui.dp(this, 44))") >= 4,
-      "row buttons keep a 44dp minimum but grow with font scale")
+check(s.count("setMinHeight(Ui.dp(this, 60))") >= 4,
+      "row buttons keep a 60dp minimum but grow with font scale")
 check("getNextFocusLeftId() == View.NO_ID" in s
       and "getNextFocusRightId() == View.NO_ID" in s,
       "undefined left/right targets are pinned to self, not geometric search")
@@ -178,8 +178,8 @@ check("SubjectWeights.MAX_WEIGHT + 1" in raw_s,
       "UI weight cycle is driven by the same max weight")
 check("Subjects.norm(subject)" in _st and '"w" + s' in _st,
       "settings store persists all four normalized slots")
-check('android:versionCode="21"' in _mf, "manifest versionCode advances to 21")
-check('VERSION_CODE="21"' in b, "build script versionCode advances to 21")
+check('android:versionCode="22"' in _mf, "manifest versionCode advances to 22")
+check('VERSION_CODE="22"' in b, "build script versionCode advances to 22")
 check("SubjectWeights.java" in _run and "SubjectWeightsTest" in _run,
       "new weights class and JVM test are wired into the test runner")
 check("bank_distribution_check.py" in b,
@@ -231,7 +231,7 @@ _launch = strip_comments(read(os.path.join(
     ROOT, "app/src/com/jager/tvquiz/LaunchPolicy.java")))
 _res = os.path.join(ROOT, "app/res")
 
-check("ROW_GAP_DP = 12" in s, "settings declares a shared 12dp row gap")
+check("ROW_GAP_DP = 14" in s, "settings declares a shared 14dp row gap")
 check(s.count("rowLp()") == 5, "row gap is applied to every row, button and note")
 check("p.setMargins(0, half, 0, half)" in s, "row gap is symmetric top and bottom")
 check('getBoolean("bootAutostart", false)' in _st,
@@ -289,17 +289,17 @@ _mpc = strip_comments(read(os.path.join(_src, "MediaPauseController.java")))
 _ep = strip_comments(read(os.path.join(_src, "ExitPolicy.java")))
 _rv = read(os.path.join(_src, "OverlayQuizView.java"))
 
-check("public static boolean canExit(int sessionCorrect)" in _ep
-      and "REQUIRED_CORRECT = 1" in _ep,
-      "exit gate is a single pure-Java rule requiring one correct answer")
+check("public static boolean canExit(int sessionCorrect, int required)" in _ep
+      and "DEFAULT_REQUIRED_CORRECT = 5" in _ep,
+      "exit gate is a pure-Java rule with a parent-configurable default of 5")
 check("sessionCorrect" in _svc and "\n        sessionCorrect = 0;" in _svc,
       "service resets the correct-answer counter on every new quiz popup")
-check("ExitPolicy.canExit(sessionCorrect)" in _svc,
-      "service re-checks the exit gate instead of trusting the view")
+check("ExitPolicy.canExit(sessionCorrect, requiredCorrect)" in _svc,
+      "service re-checks the exit gate against the configured threshold")
 check("if (!exitAllowed) { nudgeExit(); return; }" in _v,
       "back key is swallowed until the exit gate opens")
-check("setExitAllowed(ExitPolicy.canExit(sessionCorrect))" in _svc,
-      "a correct answer unlocks the back key immediately")
+check("setExitGate(requiredCorrect, sessionCorrect, st.hasPin())" in _svc,
+      "a correct answer refreshes progress and unlocks at the configured threshold")
 check("换题不清 exitAllowed" in _rv,
       "binding a new question cannot re-lock an already unlocked session")
 check("KeyRouter.SEM_HOME" in _v and "ACT_PARENT" in _v,
@@ -321,7 +321,59 @@ check("hasSessionControl" in raw_s and "ACTION_NOTIFICATION_LISTENER_SETTINGS" i
 check("ExitPolicy.java" in _run and "ExitGateTest.java" in _run
       and "ExitGateTest; do" in _run,
       "the exit gate is compiled and executed by the JVM suite")
-check("至少答对 1 题" in raw_s,
-      "parent settings explain the one-correct-answer rule")
+check("答对才能返回" in raw_s and "requiredCorrect()" in raw_s,
+      "parent settings expose the configurable exit threshold")
+
+
+# ---- v1.0.5：家长可配门禁 + 全站大字版 ----
+_ui = strip_comments(read(os.path.join(_src, "Ui.java")))
+_sizer = strip_comments(read(os.path.join(_src, "QuizTextSizer.java")))
+_st5 = strip_comments(read(os.path.join(_src, "SettingsStore.java")))
+_pin = read(os.path.join(_src, "PinVerifyView.java"))
+_wrong = read(os.path.join(_src, "WrongBookActivity.java"))
+
+check("TYPE_SCALE = 1.35f" in _ui and "scaledSp(" in _ui,
+      "one global type scale drives every page typography")
+check("t.setTextSize(TypedValue.COMPLEX_UNIT_SP, scaledSp(sp))" in _ui
+      and "b.setTextSize(TypedValue.COMPLEX_UNIT_SP, scaledSp(sp))" in _ui,
+      "both TextView and Button go through the shared scale")
+check("MUTED = 0xFF63667F" in _ui, "secondary text contrast improved for TV distance")
+check("RADIUS_DP" in _ui and "setStroke(dp(c, 3), stroke)" in _ui,
+      "cards share a radius and focus strokes are thicker")
+check('getInt("requiredCorrect", ExitPolicy.DEFAULT_REQUIRED_CORRECT)' in _st5
+      and "public int requiredCorrect()" in _st5,
+      "parent threshold is persisted with the documented default")
+check('sp.edit().putInt("requiredCorrect", ExitPolicy.normalizeRequired(v)).commit();' in _st5,
+      "threshold writes are synchronous and clamped")
+check("requiredCorrect = st.requiredCorrect();" in _svc,
+      "service re-reads the parent threshold on each quiz popup")
+check("ExitPolicy.canExit(sessionCorrect, requiredCorrect)" in _svc,
+      "both service exit checks use the configured threshold")
+check("public void setExitGate(int required, int correct, boolean pinSet)" in _v
+      and "setExitGate(requiredCorrect, sessionCorrect, st.hasPin())" in _svc,
+      "view and service share the same gate state")
+check("exitAllowed = ExitPolicy.canExit(sessionCorrect, requiredCorrect);" in _v,
+      "view re-evaluates the gate from the configured threshold and progress")
+check("ExitPolicy.tip(exitAllowed, parentPinSet, requiredCorrect, sessionCorrect)" in _v
+      and "ExitPolicy.blockedHint(requiredCorrect, sessionCorrect)" in _v,
+      "quiz tips show remaining progress toward the configured threshold")
+check('"答对才能返回"' in raw_s and "rowRequiredCorrect.setText" in s,
+      "parent settings expose a dedicated threshold row")
+check("ExitPolicy.MAX_REQUIRED_CORRECT" in s,
+      "threshold cycling is bounded by the policy constants")
+check("st.requiredCorrect()" in m and "答对才能返回：" in m,
+      "home status line reflects the configured threshold")
+check("QUESTION_BASE_SP" in _v and "Ui.scaledSp(Math.min(QUESTION_BASE_SP" in _v,
+      "quiz question uses the scaled large-text sizer")
+check("if (n > 72) return 26;" in _sizer and "return 38;" in _sizer,
+      "long questions keep a readable minimum size")
+check("Ui.scaledSp(18)" in raw_s, "URL field uses the shared scale instead of a raw size")
+check('"家长设置", 28' in raw_s and '"知行答题守护", 38' in m,
+      "page titles are enlarged for TV viewing")
+check("Ui.RADIUS_DP" in raw_s and "Ui.RADIUS_DP" in m
+      and "Ui.RADIUS_DP" in _pin and "Ui.RADIUS_DP" in _wrong,
+      "all pages share the unified card radius")
+check("Ui.fixed(this, 64)" in m and "Ui.fixed(this, 48)" in s,
+      "fixed heights grow with the larger type scale")
 
 print("LAYOUT_CONTRACT_OK total=%d" % TOTAL)

@@ -70,15 +70,15 @@ public final class PinVerifyView {
         layer.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
 
         LinearLayout card = Ui.vbox(ctx);
-        card.setBackground(Ui.round(Ui.CARD, 14, ctx));
-        card.setPadding(Ui.dp(ctx, 24), Ui.dp(ctx, 14), Ui.dp(ctx, 24), Ui.dp(ctx, 12));
+        card.setBackground(Ui.round(Ui.CARD, Ui.RADIUS_DP, ctx));
+        card.setPadding(Ui.dp(ctx, 30), Ui.dp(ctx, 20), Ui.dp(ctx, 30), Ui.dp(ctx, 18));
         card.setGravity(Gravity.CENTER_HORIZONTAL);
 
-        card.addView(Ui.tv(ctx, title, 21, Ui.TEXT), Ui.fixed(ctx, 36));
-        mask = Ui.tv(ctx, "", 28, Ui.AMBER);
-        card.addView(mask, Ui.fixed(ctx, 42));
-        msg = Ui.tv(ctx, "", 15, Ui.AMBER);
-        card.addView(msg, Ui.fixed(ctx, 26));
+        card.addView(Ui.tv(ctx, title, 24, Ui.TEXT), Ui.fixed(ctx, 48));
+        mask = Ui.tv(ctx, "", 32, Ui.AMBER);
+        card.addView(mask, Ui.fixed(ctx, 56));
+        msg = Ui.tv(ctx, "", 18, Ui.AMBER);
+        card.addView(msg, Ui.fixed(ctx, 36));
 
         String[] keys = {"1", "2", "3", "4", "5", "6",
                 "7", "8", "9", "清空", "0", "确定"};
@@ -88,7 +88,7 @@ public final class PinVerifyView {
                 final String k = keys[row * 3 + col];
                 int bg = "确定".equals(k) ? Ui.PURPLE : Ui.BTN_BG;
                 int fg = "确定".equals(k) ? Ui.CARD : Ui.TEXT;
-                Button btn = Ui.button(ctx, k, bg, fg, 18);
+                Button btn = Ui.button(ctx, k, bg, fg, 21);
                 btn.setFocusableInTouchMode(false);
                 btn.setOnClickListener(new View.OnClickListener() {
                     @Override public void onClick(View v) { key(k); }
@@ -96,29 +96,29 @@ public final class PinVerifyView {
                 Ui.focus(btn, ctx, bg, fg);
                 if (first == null) first = btn;
                 LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
-                        Ui.dp(ctx, 110), Ui.dp(ctx, 42));
-                p.setMargins(Ui.dp(ctx, 5), Ui.dp(ctx, 3), Ui.dp(ctx, 5), Ui.dp(ctx, 3));
+                        Ui.dp(ctx, 132), Ui.dp(ctx, 64));
+                p.setMargins(Ui.dp(ctx, 7), Ui.dp(ctx, 4), Ui.dp(ctx, 7), Ui.dp(ctx, 4));
                 r.addView(btn, p);
             }
             card.addView(r, new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(ctx, 50)));
+                    ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(ctx, 74)));
         }
 
-        Button cancel = Ui.button(ctx, "取消", Ui.BTN_BG, Ui.TEXT, 16);
+        Button cancel = Ui.button(ctx, "取消", Ui.BTN_BG, Ui.TEXT, 19);
         cancel.setFocusableInTouchMode(false);
         cancel.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { cancel(); }
         });
         Ui.focus(cancel, ctx, Ui.BTN_BG, Ui.TEXT);
         LinearLayout.LayoutParams nb = new LinearLayout.LayoutParams(
-                Ui.dp(ctx, 200), Ui.dp(ctx, 42));
+                Ui.dp(ctx, 240), Ui.dp(ctx, 64));
         nb.gravity = Gravity.CENTER_HORIZONTAL;
         card.addView(cancel, nb);
 
-        card.addView(Ui.tv(ctx, footer, 13, Ui.MUTED), Ui.fixed(ctx, 26));
+        card.addView(Ui.tv(ctx, footer, 16, Ui.MUTED), Ui.fixed(ctx, 36));
 
         FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(
-                Ui.dp(ctx, 470), ViewGroup.LayoutParams.WRAP_CONTENT);
+                Ui.dp(ctx, 560), ViewGroup.LayoutParams.WRAP_CONTENT);
         cp.gravity = Gravity.CENTER;
         layer.addView(card, cp);
         refresh();

@@ -11,25 +11,44 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-/** 代码布局公共工具：统一尺寸、按钮与遥控器焦点高亮。 */
+/**
+ * 代码布局公共工具：统一尺寸、字号、卡片圆角与遥控器焦点高亮。
+ *
+ * v1.0.5 大字版：所有页面文本都经过 {@link #scaledSp(float)} 放大，
+ * 一处调整即可覆盖主页 / 家长设置 / 答题页 / 密码浮层 / 错题库，
+ * 避免逐页漏改、字号回退。固定高度由各页面同步放大，行高用 WRAP_CONTENT
+ * 自适应系统字体缩放，不会裁切大字号。
+ */
 public final class Ui {
     private Ui() {}
 
+    /** 电视远距离观看的全局字号倍率：基准 sp × 1.35。 */
+    public static final float TYPE_SCALE = 1.35f;
+
+    /** 把设计基准 sp 换算成实际 sp；所有 Ui.tv / Ui.button 都必须走这里。 */
+    public static int scaledSp(float baseSp) {
+        return Math.round(baseSp * TYPE_SCALE);
+    }
+
     // 与答题页共用的浅色底、白色卡片和紫色遥控器焦点。
-    public static final int BG = 0xFFF7F8FC;
+    public static final int BG = 0xFFF3F5FC;
     public static final int CARD = 0xFFFFFFFF;
-    public static final int TEXT = 0xFF222339;
-    public static final int MUTED = 0xFF85879D;
+    public static final int TEXT = 0xFF1D1E31;
+    /** 加深次级文字，远距离也看得清；旧值 0xFF85879D 对比度不足。 */
+    public static final int MUTED = 0xFF63667F;
     public static final int PURPLE = 0xFF7058DE;
     public static final int PURPLE_DARK = 0xFF5840C1;
     public static final int PURPLE_LIGHT = 0xFFEBE6FF;
-    public static final int BORDER = 0xFFE9E8F0;
+    public static final int BORDER = 0xFFDCDCEA;
     public static final int BLUE = PURPLE;
     public static final int BLUE_LIGHT = PURPLE_LIGHT;
-    public static final int GREEN = 0xFF2AA377;
-    public static final int RED = 0xFFC25252;
+    public static final int GREEN = 0xFF1F946B;
+    public static final int RED = 0xFFB84545;
     public static final int AMBER = PURPLE;
-    public static final int BTN_BG = 0xFFF7F7FB;
+    public static final int BTN_BG = 0xFFF4F5FB;
+
+    /** 全站统一的卡片圆角。 */
+    public static final int RADIUS_DP = 14;
 
     public static int dp(Context c, float v) {
         return (int) (v * c.getResources().getDisplayMetrics().density + 0.5f);
@@ -52,7 +71,7 @@ public final class Ui {
 
     public static GradientDrawable roundBorder(int color, int stroke, int radiusDp, Context c) {
         GradientDrawable g = round(color, radiusDp, c);
-        g.setStroke(dp(c, 2), stroke);
+        g.setStroke(dp(c, 3), stroke);
         return g;
     }
 
@@ -63,7 +82,7 @@ public final class Ui {
     public static TextView tv(Context c, String text, int sp, int color, int gravity) {
         TextView t = new TextView(c);
         t.setText(text);
-        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
+        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, scaledSp(sp));
         t.setTextColor(color);
         t.setGravity(gravity);
         return t;
@@ -76,31 +95,32 @@ public final class Ui {
     public static Button button(Context c, String text, int bg, int fg, int sp) {
         Button b = new Button(c);
         b.setText(text);
-        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, scaledSp(sp));
         b.setTextColor(fg);
         b.setAllCaps(false);
         b.setMinHeight(0);
         b.setMinimumHeight(0);
         b.setMinWidth(0);
         b.setMinimumWidth(0);
-        b.setPadding(dp(c, 14), dp(c, 8), dp(c, 14), dp(c, 8));
-        b.setBackground(isLightButton(bg) ? roundBorder(bg, BORDER, 10, c) : round(bg, 10, c));
+        b.setPadding(dp(c, 18), dp(c, 12), dp(c, 18), dp(c, 12));
+        b.setBackground(isLightButton(bg) ? roundBorder(bg, BORDER, RADIUS_DP, c)
+                : round(bg, RADIUS_DP, c));
         b.setFocusable(true);
         b.setFocusableInTouchMode(true);
         return b;
     }
 
-    /** 遥控器 DPAD 焦点：浅色按钮使用与答题选项相同的浅紫底与紫色描边。 */
+    /** 遥控器 DPAD 焦点：浅色按钮使用与答题选项相同的浅紫底与加粗紫色描边。 */
     public static void focus(final Button b, final Context c,
                              final int normalBg, final int focusedBg, final int normalFg) {
         b.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override public void onFocusChange(View v, boolean has) {
                 if (isLightButton(normalBg)) {
                     b.setBackground(roundBorder(has ? PURPLE_LIGHT : normalBg,
-                            has ? PURPLE : BORDER, 10, c));
+                            has ? PURPLE : BORDER, RADIUS_DP, c));
                     b.setTextColor(has ? PURPLE_DARK : normalFg);
                 } else {
-                    b.setBackground(round(has ? focusedBg : normalBg, 10, c));
+                    b.setBackground(round(has ? focusedBg : normalBg, RADIUS_DP, c));
                     b.setTextColor(has ? Color.WHITE : normalFg);
                 }
             }

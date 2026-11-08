@@ -197,12 +197,12 @@ public class MainActivity extends Activity {
 
     private Button actionButton(LinearLayout row, String label, int bg, View.OnClickListener l) {
         int fg = Ui.isLightButton(bg) ? Ui.TEXT : Ui.CARD;
-        Button b = Ui.button(this, label, bg, fg, 17);
+        Button b = Ui.button(this, label, bg, fg, 20);
         b.setOnClickListener(l);
         Ui.focus(b, this, bg, Ui.PURPLE_DARK, fg);
         // 三列等宽：不写死 190dp，任意屏宽都对齐成 3 列。
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, Ui.dp(this, 54), 1f);
-        p.setMargins(Ui.dp(this, 7), Ui.dp(this, 4), Ui.dp(this, 7), Ui.dp(this, 4));
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, Ui.dp(this, 68), 1f);
+        p.setMargins(Ui.dp(this, 10), Ui.dp(this, 6), Ui.dp(this, 10), Ui.dp(this, 6));
         row.addView(b, p);
         return b;
     }
@@ -232,24 +232,24 @@ public class MainActivity extends Activity {
         LinearLayout l = Ui.vbox(this);
         l.setBackgroundColor(Ui.BG);
         l.setGravity(Gravity.TOP);
-        l.setPadding(Ui.dp(this, 40), Ui.dp(this, 18), Ui.dp(this, 40), Ui.dp(this, 12));
+        l.setPadding(Ui.dp(this, 44), Ui.dp(this, 24), Ui.dp(this, 44), Ui.dp(this, 16));
 
-        TextView title = Ui.tv(this, "知行答题守护", 34, Ui.TEXT);
+        TextView title = Ui.tv(this, "知行答题守护", 38, Ui.TEXT);
         title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        l.addView(title, Ui.fixed(this, 46));
+        l.addView(title, Ui.fixed(this, 64));
         l.addView(Ui.tv(this, "电视答题练习  ·  应用版本 " + appVersion,
-                15, Ui.MUTED), Ui.fixed(this, 32));
+                18, Ui.MUTED), Ui.fixed(this, 42));
 
         LinearLayout cards = Ui.hbox(this);
         cards.setGravity(Gravity.CENTER_VERTICAL);
-        heroStatus = Ui.tv(this, "", 29, Ui.PURPLE, Gravity.LEFT);
+        heroStatus = Ui.tv(this, "", 32, Ui.PURPLE, Gravity.LEFT);
         heroStatus.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        guardDetail = Ui.tv(this, "", 20, Ui.TEXT, Gravity.LEFT);
+        guardDetail = Ui.tv(this, "", 22, Ui.TEXT, Gravity.LEFT);
         addSummaryCard(cards, "守护状态", heroStatus, guardDetail);
-        status = Ui.tv(this, "", 20, Ui.TEXT, Gravity.LEFT);
+        status = Ui.tv(this, "", 22, Ui.TEXT, Gravity.LEFT);
         status.setLineSpacing(Ui.dp(this, 8), 1.15f);
         addSummaryCard(cards, "学习配置", status);
-        statusRight = Ui.tv(this, "", 20, Ui.TEXT, Gravity.LEFT);
+        statusRight = Ui.tv(this, "", 22, Ui.TEXT, Gravity.LEFT);
         statusRight.setLineSpacing(Ui.dp(this, 8), 1.15f);
         addSummaryCard(cards, "题库与设备", statusRight);
         l.addView(cards, Ui.fill(1));
@@ -275,7 +275,7 @@ public class MainActivity extends Activity {
                 startActivity(new Intent(MainActivity.this, SettingsActivity.class));
             }
         });
-        l.addView(row1, Ui.fixed(this, 62));
+        l.addView(row1, Ui.fixed(this, 78));
         gridRows.add(r1);
 
         LinearLayout row2 = Ui.hbox(this);
@@ -296,14 +296,14 @@ public class MainActivity extends Activity {
                         Toast.LENGTH_LONG).show();
             }
         });
-        l.addView(row2, Ui.fixed(this, 62));
+        l.addView(row2, Ui.fixed(this, 78));
         gridRows.add(r2);
         wireGrid();
 
         l.addView(Ui.tv(this,
                 "开启守护后按 Home 切到任意应用，到点弹出全屏答题页；Home 键属系统级按键，第三方无法拦截。\n"
                         + "卸载前请先关闭守护；遮罩卡住可在电脑执行 adb shell am force-stop com.jager.tvquiz",
-                13, Ui.MUTED), Ui.fixed(this, 44));
+                16, Ui.MUTED), Ui.fixed(this, 56));
 
         rootView.addView(l, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -313,17 +313,17 @@ public class MainActivity extends Activity {
     private void addSummaryCard(LinearLayout row, String heading, TextView... values) {
         LinearLayout card = Ui.vbox(this);
         card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(Ui.dp(this, 24), Ui.dp(this, 22), Ui.dp(this, 24), Ui.dp(this, 22));
-        card.setBackground(Ui.round(Ui.CARD, 14, this));
-        TextView caption = Ui.tv(this, heading, 17, Ui.MUTED, Gravity.LEFT);
+        card.setPadding(Ui.dp(this, 30), Ui.dp(this, 28), Ui.dp(this, 30), Ui.dp(this, 28));
+        card.setBackground(Ui.round(Ui.CARD, Ui.RADIUS_DP, this));
+        TextView caption = Ui.tv(this, heading, 20, Ui.MUTED, Gravity.LEFT);
         card.addView(caption);
         for (TextView value : values) {
             LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
-            p.topMargin = Ui.dp(this, 18);
+            p.topMargin = Ui.dp(this, 22);
             card.addView(value, p);
         }
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, -1, 1);
-        p.setMargins(Ui.dp(this, 7), Ui.dp(this, 6), Ui.dp(this, 7), Ui.dp(this, 15));
+        p.setMargins(Ui.dp(this, 10), Ui.dp(this, 8), Ui.dp(this, 10), Ui.dp(this, 18));
         row.addView(card, p);
     }
 
@@ -434,7 +434,9 @@ public class MainActivity extends Activity {
         StringBuilder s = new StringBuilder();
         s.append(st.gradeLabel()).append(NL)
                 .append("每 ").append(st.intervalSec()).append(" 秒一题").append(NL)
-                .append("每轮 ").append(st.roundCount()).append(" 题").append(NL);
+                .append("每轮 ").append(st.roundCount()).append(" 题").append(NL)
+                .append("答对才能返回：").append(st.requiredCorrect())
+                .append(" 题").append(NL);
         s.append("学科权重：")
                 .append(st.allSubjects()
                         ? ("数/语/英/其他 " + st.weight(0) + "/" + st.weight(1)

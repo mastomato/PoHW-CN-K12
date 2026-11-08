@@ -23,7 +23,7 @@
 | `SubjectWeights` | 纯 Java 四槽学科权重；全学科开关与题库可用性共同决定第 4 槽是否有效，可 JVM 单测 |
 | `KeyRouter` | 纯 Java 遥控器按键语义路由；v1.0.4 增加 `SEM_HOME`（吞掉 HOME / 最近任务）与 `SEM_PARENT`（菜单键 / 数字 0 家长出口） |
 | `QuizFlow` / `QuizRound` | 单题判题状态机 / 每轮题数与成绩；`QuizRound.reset()` 只清本轮，不影响退出门禁的会话计数 |
-| `ExitPolicy` | **v1.0.4 新增**：纯 Java 退出门禁单一规则源，`canExit(sessionCorrect)` / `tip()` / `blockedHint()` |
+| `ExitPolicy` | **v1.0.4 新增 / v1.0.5 可配**：纯 Java 退出门禁单一规则源，`canExit(sessionCorrect, required)` / `normalizeRequired()` / `remaining()` / `tip()` / `blockedHint()`，默认 5 题、范围 1–10 |
 | `MediaPauseController` | **v1.0.4 重写**：持续音频焦点 + 重复媒体暂停键 + 活跃 MediaSession 点名暂停，退出时归还焦点并尝试恢复 |
 | `MediaSessionListener` | **v1.0.4 新增**：空 `NotificationListenerService`，仅为取得「通知使用权」以枚举活跃会话，不读取、不缓存任何通知内容 |
 
@@ -35,7 +35,7 @@ v1.0.1 起控制台只有一个守护开关：`GuardState.toggleColor(running)` 
 左右关系，保证 TV 遥控器能在教材版本与题目配比之间移动，且不需要跨栏跳转。
 单列行两端未显式定义的左右目标指向自身（URL `EditText` 例外，左右键留给光标移动），
 避免系统按几何邻近把焦点甩到相邻行；行按钮 `WRAP_CONTENT` + 44dp 最小高度，兼容系统大字模式。
-源码结构由 `tests/layout_contract.py` 的 **125 条**断言在构建门禁里守住，
+源码结构由 `tests/layout_contract.py` 的 **145 条**断言在构建门禁里守住，
 `build.sh` 另在签名后强制比对发布证书指纹。
 
 **学科配比（versionCode 15）**：`SubjectWeights` 保存数 / 语 / 英 / 其他四槽权重（默认 5:3:2:2）。
@@ -49,7 +49,7 @@ v1.0.1 起控制台只有一个守护开关：`GuardState.toggleColor(running)` 
 提取真实 SQL 实跑内置题库，验证池隔离、配比分布与全学科关闭时 0 题，纳入 `[0/9]` 门禁。
 兜底是**池保持**的：先只放宽年级（`POOL_CORE_ALL` / `POOL_OTHER_ALL`），最后才全库；
 空池用 `MAX(1, (SELECT COUNT(*) ...))` 保证 `OFFSET` 不为 NULL，避免 SQL 异常被吞后静默串池。
-同一批 `POOL_*` 常量、双份参数绑定与三层兜底都被 125 条契约和 `tests/mutation_suite.py` 的 35 组负向变异钉死。
+同一批 `POOL_*` 常量、双份参数绑定与三层兜底都被 145 条契约和 `tests/mutation_suite.py` 的 38 组负向变异钉死。
 
 **默认开关与启动链路**：全新安装时「开机自启」关、「启动即守护」开、答题暂停与恢复播放均开。
 `MainActivity.onCreate()` 用 `LaunchPolicy.shouldAutoGuard()` 判定是否自动拉起守护，四个条件缺一不可：
@@ -73,7 +73,7 @@ v1.0.1 起控制台只有一个守护开关：`GuardState.toggleColor(running)` 
   -> 每题判定 -> correct() / wrong()；仅答对时 sessionCorrect++
   -> 一轮结束 -> 留在答题页显示成绩；确定键开下一轮（QuizRound.reset()）
   -> 返回键 -> OverlayQuizView.requestExit()
-       !ExitPolicy.canExit(sessionCorrect) -> nudgeExit() 提示，遮罩不撤
+       !ExitPolicy.canExit(sessionCorrect, requiredCorrect) -> nudgeExit() 提示，遮罩不撤
        放行 -> finishQuiz()（服务侧二次校验）-> removeViewImmediate()
        media.quizFinished(st) 归还焦点 / 尝试恢复；remainSec = interval（续租）
 ```
@@ -206,11 +206,22 @@ Android 8+ 的「5 秒内前台化」要求；`onDestroy()` 还会显式 `stopFo
 - 内置离线题库没有出版社版本字段，分学科版本不会改变离线抽题结果。
 - 错题库不做云同步、不跨设备；`adb shell pm clear` 会一并清空。
 
+## 1.0.5：可配置门禁与全站大字版
+
+`SettingsStore.requiredCorrect()` 持久化家长设定的阈值（默认 5、范围 1–10、越界夹取），
+`QuizOverlayService.showQuiz()` 每次弹题读取到 `requiredCorrect` 并重置 `sessionCorrect`，
+随后用 `setExitGate(requiredCorrect, sessionCorrect, st.hasPin())` 把阈值与进度一起下发给 View；
+答对后重发一次。View 的 `tip()` / `blockedHint()` 因此能显示「需答对 N 题 / 还差 K 题」。
+
+字号统一由 `Ui.TYPE_SCALE = 1.35f` 与 `Ui.scaledSp()` 收口，`Ui.tv()` / `Ui.button()` 全部经过它；
+答题页题干是唯一直接 `setTextSize` 的控件，改用 `Ui.scaledSp(Math.min(QUESTION_BASE_SP, QuizTextSizer.sp(text)))`
+保持一致。固定高度、按钮最小高度、卡片内边距同步放大，`WRAP_CONTENT` 行继续随系统字体缩放自适应。
+
 ## 1.0.4 行为修复
 
-### 退出门禁：至少答对一题
+### 退出门禁：至少答对一题（1.0.5 起阈值可配）
 
-`ExitPolicy` 是**纯 Java、零 Android 依赖**的单一规则源，`REQUIRED_CORRECT = 1`。
+`ExitPolicy` 是**纯 Java、零 Android 依赖**的单一规则源，1.0.4 固定 `REQUIRED_CORRECT = 1`；1.0.5 改为 `DEFAULT_REQUIRED_CORRECT = 5` 且阈值由家长设置注入。
 `QuizOverlayService` 用 `sessionCorrect` 记录「一次弹题会话」的累计答对数：
 `showQuiz()` 清零，`correct()` 递增，`bind()` 换题与 `QuizRound.reset()` 开新一轮
 都**不清零**——否则孩子只要熬到新一轮就能重新上锁前的空窗期退出。
@@ -220,7 +231,7 @@ Android 8+ 的「5 秒内前台化」要求；`onDestroy()` 还会显式 `stopFo
 1. **View 层**：`OverlayQuizView.requestExit()` 首先检查 `exitAllowed`；为 `false`
    时只调 `nudgeExit()` 显示 `ExitPolicy.blockedHint()`，不进入退出流程。
    `exitAllowed` 由 `setExitAllowed(true)` 单向置位，`bind()` 不会重置。
-2. **服务层**：`finishQuiz()` 再判一次 `ExitPolicy.canExit(sessionCorrect)`，
+2. **服务层**：`finishQuiz()` 再判一次 `ExitPolicy.canExit(sessionCorrect, requiredCorrect)`，
    防止将来有别的调用点绕过 View 直接摘窗口。
 3. **窗口层**：tick 每秒巡检，未满足门禁且 `quizView.isAttached() == false` 时
    `rebuildOverlay()` 重建覆盖窗口，并让 `media.reassert()` 重新压住播放。
@@ -256,12 +267,12 @@ Android 8+ 的「5 秒内前台化」要求；`onDestroy()` 还会显式 `stopFo
 
 ### 门禁与测试
 
-`app/build.sh [0/9]` 用符号级断言钉死 `ExitPolicy.canExit`、`exitAllowed`、
+`app/build.sh [0/9]` 用符号级断言钉死 `ExitPolicy.canExit`、`requiredCorrect = st.requiredCorrect()`、`exitAllowed`、`TYPE_SCALE`、
 `sessionCorrect`、`getActiveSessions`、`PULSE_INTERVAL`、`SEM_HOME`、
 `SEM_PARENT`、Manifest 中的 `.MediaSessionListener`，并显式禁止
 `onExit() { finishQuiz(); }` 这种无门禁回退写法。`tests/layout_contract.py`
-125 条断言、`tests/run.sh` 9 组 226 项 JVM 检查（含新增 `ExitGateTest`）、
-`tests/mutation_suite.py` 35 组负向变异（AC–AI 专门针对本次两项修复）共同守住行为。
+145 条断言、`tests/run.sh` 9 组 238 项 JVM 检查（含新增 `ExitGateTest`）、
+`tests/mutation_suite.py` 38 组负向变异（AC–AL 覆盖可配置门禁与全站大字版）共同守住行为。
 
 ### 签名与覆盖安装
 

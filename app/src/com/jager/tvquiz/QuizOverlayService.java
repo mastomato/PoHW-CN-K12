@@ -94,6 +94,8 @@ public class QuizOverlayService extends Service {
      * 开新一轮会 reset 轮次成绩，但退出门禁看的是整个会话，不能倒退重新上锁。
      */
     private int sessionCorrect = 0;
+    /** 本次弹题读取的家长设定阈值；换题不变，下次弹题重新读。 */
+    private int requiredCorrect = ExitPolicy.DEFAULT_REQUIRED_CORRECT;
     /** 家长通过密码验证后的单次放行，用完即清。 */
     private boolean parentOverride = false;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -159,7 +161,7 @@ public class QuizOverlayService extends Service {
             } else {
                 // 未满足退出门禁时，遮罩不许消失：HOME / 系统对话框偶尔会把覆盖窗口
                 // 摘掉，这里每秒巡检一次，掉线就重建，同时再压一次暂停信号。
-                if (!parentOverride && !ExitPolicy.canExit(sessionCorrect)
+                if (!parentOverride && !ExitPolicy.canExit(sessionCorrect, requiredCorrect)
                         && quizView != null && !quizView.isAttached()) {
                     rebuildOverlay();
                     if (media != null) media.reassert();
@@ -392,13 +394,13 @@ public class QuizOverlayService extends Service {
         round.reset(st.roundCount());
         // 新一次弹题重置会话门禁：上次的答对成绩不继承。
         sessionCorrect = 0;
+        requiredCorrect = st.requiredCorrect();
         parentOverride = false;
         st.bumpQuestioned();
 
         // 不复用 View：反复 add/remove 会让窗口焦点状态不可预测。
         final OverlayQuizView view = new OverlayQuizView(this, listener);
-        view.setParentPinSet(st.hasPin());
-        view.setExitAllowed(ExitPolicy.canExit(sessionCorrect));
+        view.setExitGate(requiredCorrect, sessionCorrect, st.hasPin());
         view.bind(current, metaFor(current), round.questionNumber(), round.total());
         quizView = view;
         focusRetry = 0;
@@ -491,8 +493,8 @@ public class QuizOverlayService extends Service {
             st.bumpCorrect();
             round.record(true);
             sessionCorrect++;
-            // 立刻解锁返回键：答对一题即可退出，不必做完一整轮。
-            quizView.setExitAllowed(ExitPolicy.canExit(sessionCorrect));
+            // 累计答对数达到家长设定的阈值就立刻解锁返回键，不必做完一整轮。
+            quizView.setExitGate(requiredCorrect, sessionCorrect, st.hasPin());
             play(correctSound);
             quizView.correct(current.answerIndex, current.explain);
             return;
@@ -549,7 +551,7 @@ public class QuizOverlayService extends Service {
     private void finishQuiz() {
         if (!quizShowing) return;
         // 第二道防线：即使 View 层被改坏 / 有别的路径调 onExit，服务也不放行。
-        if (!parentOverride && !ExitPolicy.canExit(sessionCorrect)) {
+        if (!parentOverride && !ExitPolicy.canExit(sessionCorrect, requiredCorrect)) {
             if (quizView != null) quizView.nudgeExit();
             return;
         }

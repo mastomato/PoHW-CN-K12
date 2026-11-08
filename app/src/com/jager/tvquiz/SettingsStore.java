@@ -109,6 +109,17 @@ public final class SettingsStore implements PinGate.Store {
         sp.edit().putBoolean("autoGuardOnBoot", v).commit();
     }
 
+    // ---------- 退出门禁：必须答对几题才能返回（默认 5） ----------
+
+    /** 家长可配：本次弹题会话内需答对的题数，默认 5，范围 1..10。 */
+    public int requiredCorrect() {
+        return ExitPolicy.normalizeRequired(
+                sp.getInt("requiredCorrect", ExitPolicy.DEFAULT_REQUIRED_CORRECT));
+    }
+    public void requiredCorrect(int v) {
+        sp.edit().putInt("requiredCorrect", ExitPolicy.normalizeRequired(v)).commit();
+    }
+
     // ---------- 答题时暂停播放（两项默认开启，家长可分别关闭） ----------
 
     public boolean pauseOnQuiz() { return sp.getBoolean("pauseOnQuiz", true); }

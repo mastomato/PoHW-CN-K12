@@ -34,6 +34,8 @@ public final class OverlayQuizView {
     private static final int GREEN = 0xFF2AA377;
     private static final int RED = 0xFFC25252;
     private static final int WHITE = 0xFFFFFFFF;
+    /** 题干基准字号，与 QuizTextSizer 的上限一致，统一经 Ui.scaledSp 放大。 */
+    private static final int QUESTION_BASE_SP = 38;
     private static final int QUESTION = 0;
     private static final int COMPLETE = 1;
 
@@ -66,6 +68,9 @@ public final class OverlayQuizView {
     /** 本次弹题会话是否已满足退出门禁；换题、开新一轮都不清零。 */
     private boolean exitAllowed = false;
     private boolean parentPinSet = false;
+    /** 家长设定的门禁阈值与本次会话进度，用于生成「还差几题」提示。 */
+    private int requiredCorrect = ExitPolicy.DEFAULT_REQUIRED_CORRECT;
+    private int sessionCorrect = 0;
     private View parentGate;
 
     public OverlayQuizView(Context ctx, Listener l) {
@@ -83,61 +88,61 @@ public final class OverlayQuizView {
         root.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
         LinearLayout body = Ui.vbox(c);
         body.setGravity(Gravity.CENTER_VERTICAL);
-        body.setPadding(dp(40), dp(24), dp(40), dp(24));
+        body.setPadding(dp(44), dp(28), dp(44), dp(28));
         scroll.addView(body);
-        body.addView(label("知行答题  /  答题守护", 16, MUTED, false));
+        body.addView(label("知行答题  /  答题守护", 19, MUTED, false));
         LinearLayout header = Ui.hbox(c);
         header.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams headerLp = new LinearLayout.LayoutParams(-1, -2);
         headerLp.topMargin = dp(7);
         body.addView(header, headerLp);
-        TextView heading = label("答题练习", 33, INK, true);
+        TextView heading = label("答题练习", 36, INK, true);
         header.addView(heading, new LinearLayout.LayoutParams(0, -2, 1));
-        sideProgress = label("", 19, PURPLE, true);
+        sideProgress = label("", 22, PURPLE, true);
         sideProgress.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
-        header.addView(sideProgress, new LinearLayout.LayoutParams(dp(165), -2));
-        tip = label("", 17, MUTED, false);
+        header.addView(sideProgress, new LinearLayout.LayoutParams(dp(200), -2));
+        tip = label("", 20, MUTED, false);
         body.addView(tip);
         renderTip();
 
         LinearLayout card = Ui.vbox(c);
-        card.setPadding(dp(26), dp(22), dp(26), dp(24));
+        card.setPadding(dp(32), dp(28), dp(32), dp(30));
         card.setBackground(shape(WHITE, 0));
         LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(-1, -2);
         cardLp.topMargin = dp(16);
         body.addView(card, cardLp);
 
-        topic = label("", 18, PURPLE, true);
+        topic = label("", 21, PURPLE, true);
         card.addView(topic);
-        question = label("", 31, INK, true);
-        question.setPadding(0, dp(16), 0, dp(14));
-        question.setLineSpacing(dp(4), 1.08f);
+        question = label("", QUESTION_BASE_SP, INK, true);
+        question.setPadding(0, dp(20), 0, dp(18));
+        question.setLineSpacing(dp(6), 1.10f);
         card.addView(question, new LinearLayout.LayoutParams(-1, -2));
 
         for (int i = 0; i < opts.length; i++) {
             final int choice = i;
-            Button b = Ui.button(c, "", 0xFFF7F7FB, INK, 23);
+            Button b = Ui.button(c, "", 0xFFF7F7FB, INK, 26);
             b.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
-            b.setMinHeight(dp(64));
-            b.setPadding(dp(20), dp(11), dp(20), dp(11));
+            b.setMinHeight(dp(82));
+            b.setPadding(dp(26), dp(14), dp(26), dp(14));
             b.setFocusable(false);
             b.setFocusableInTouchMode(false);
             b.setOnClickListener(new View.OnClickListener() {
                 @Override public void onClick(View v) { submit(choice); }
             });
             LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
-            p.topMargin = dp(10);
+            p.topMargin = dp(14);
             card.addView(b, p);
             opts[i] = b;
         }
 
-        feedback = label("", 18, MUTED, false);
+        feedback = label("", 21, MUTED, false);
         feedback.setPadding(0, dp(8), 0, dp(4));
         card.addView(feedback, new LinearLayout.LayoutParams(-1, -2));
-        explain = label("", 18, MUTED, false);
+        explain = label("", 21, MUTED, false);
         explain.setLineSpacing(dp(3), 1f);
         card.addView(explain, new LinearLayout.LayoutParams(-1, -2));
-        next = Ui.button(c, "下一题  →", PURPLE, WHITE, 18);
+        next = Ui.button(c, "下一题  →", PURPLE, WHITE, 21);
         next.setFocusable(false);
         next.setFocusableInTouchMode(false);
         next.setBackground(shape(PURPLE, 0));
@@ -148,7 +153,7 @@ public final class OverlayQuizView {
                 else if (flow.isAnswered() && picked != correctIndex) requestNext();
             }
         });
-        LinearLayout.LayoutParams nextLp = new LinearLayout.LayoutParams(dp(240), dp(60));
+        LinearLayout.LayoutParams nextLp = new LinearLayout.LayoutParams(dp(300), dp(74));
         nextLp.topMargin = dp(14);
         card.addView(next, nextLp);
     }
@@ -156,8 +161,8 @@ public final class OverlayQuizView {
     private int dp(int value) { return Ui.dp(c, value); }
 
     private GradientDrawable shape(int fill, int stroke) {
-        GradientDrawable d = Ui.round(fill, 12, c);
-        if (stroke != 0) d.setStroke(dp(2), stroke);
+        GradientDrawable d = Ui.round(fill, 16, c);
+        if (stroke != 0) d.setStroke(dp(3), stroke);
         return d;
     }
 
@@ -184,16 +189,25 @@ public final class OverlayQuizView {
         renderTip();
     }
 
+    /** 服务在弹题 / 每次答对后下发阈值与进度，View 与 Service 用同一策略判断。 */
+    public void setExitGate(int required, int correct, boolean pinSet) {
+        requiredCorrect = ExitPolicy.normalizeRequired(required);
+        sessionCorrect = Math.max(0, correct);
+        parentPinSet = pinSet;
+        exitAllowed = ExitPolicy.canExit(sessionCorrect, requiredCorrect);
+        renderTip();
+    }
+
     private void renderTip() {
         if (tip == null) return;
-        tip.setText(ExitPolicy.tip(exitAllowed, parentPinSet));
+        tip.setText(ExitPolicy.tip(exitAllowed, parentPinSet, requiredCorrect, sessionCorrect));
         tip.setTextColor(exitAllowed ? MUTED : PURPLE);
     }
 
     /** 服务侧第二道防线被触发时，给出可见反馈，避免用户以为遥控器坏了。 */
     public void nudgeExit() {
         feedback.setTextColor(RED);
-        feedback.setText(ExitPolicy.blockedHint());
+        feedback.setText(ExitPolicy.blockedHint(requiredCorrect, sessionCorrect));
     }
 
     /** 家长密码浮层：作为子 View 叠在答题页上，不另开窗口、不摘遮罩。 */
@@ -232,7 +246,7 @@ public final class OverlayQuizView {
         sideProgress.setText("第 " + number + " / " + total + " 题");
         topic.setText(meta);
         question.setText(q.text == null ? "" : q.text);
-        question.setTextSize(Math.min(31, QuizTextSizer.sp(q.text)));
+        question.setTextSize(Ui.scaledSp(Math.min(QUESTION_BASE_SP, QuizTextSizer.sp(q.text))));
         for (int i = 0; i < 4; i++) {
             String answer = q.options != null && i < q.options.length && q.options[i] != null
                     ? q.options[i] : "";
@@ -282,14 +296,14 @@ public final class OverlayQuizView {
         transitionPending = false;
         topic.setText("本轮完成");
         question.setText("答对 " + correct + " / " + total + " 题");
-        question.setTextSize(30);
+        question.setTextSize(Ui.scaledSp(QUESTION_BASE_SP));
         sideProgress.setText("本轮已完成");
         for (Button b : opts) b.setVisibility(View.GONE);
         feedback.setTextColor(PURPLE);
         feedback.setText("正确率 " + (total == 0 ? 0 : correct * 100 / total) + "%");
         explain.setText(exitAllowed
                 ? "按确定开始下一轮，按返回退出答题。"
-                : ExitPolicy.blockedHint() + " 按确定开始下一轮继续作答。");
+                : ExitPolicy.blockedHint(requiredCorrect, sessionCorrect) + " 按确定开始下一轮继续作答。");
         next.setText("开始下一轮  →");
         next.setVisibility(View.VISIBLE);
         renderTip();

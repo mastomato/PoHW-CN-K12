@@ -89,12 +89,12 @@ public class WrongBookActivity extends Activity {
     private Button addButton(LinearLayout row, String label, int bg,
                              View.OnClickListener l) {
         int fg = Ui.isLightButton(bg) ? Ui.TEXT : Ui.CARD;
-        Button b = Ui.button(this, label, bg, fg, 16);
+        Button b = Ui.button(this, label, bg, fg, 20);
         b.setOnClickListener(l);
         Ui.focus(b, this, bg, Ui.PURPLE_DARK, fg);
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
-                Ui.dp(this, 158), Ui.dp(this, 48));
-        p.setMargins(Ui.dp(this, 5), 0, Ui.dp(this, 5), 0);
+                Ui.dp(this, 190), Ui.dp(this, 62));
+        p.setMargins(Ui.dp(this, 8), 0, Ui.dp(this, 8), 0);
         row.addView(b, p);
         return b;
     }
@@ -102,16 +102,16 @@ public class WrongBookActivity extends Activity {
     private View buildView() {
         LinearLayout l = Ui.vbox(this);
         l.setBackgroundColor(Ui.BG);
-        l.setPadding(Ui.dp(this, 40), Ui.dp(this, 14), Ui.dp(this, 40), Ui.dp(this, 10));
+        l.setPadding(Ui.dp(this, 44), Ui.dp(this, 20), Ui.dp(this, 44), Ui.dp(this, 14));
 
-        l.addView(Ui.tv(this, "知行答题守护  /  错题库", 26, Ui.TEXT),
-                Ui.fixed(this, 40));
-        title = Ui.tv(this, "", 15, Ui.AMBER, Gravity.LEFT);
-        l.addView(title, Ui.fixed(this, 26));
+        l.addView(Ui.tv(this, "知行答题守护  /  错题库", 30, Ui.TEXT),
+                Ui.fixed(this, 54));
+        title = Ui.tv(this, "", 19, Ui.AMBER, Gravity.LEFT);
+        l.addView(title, Ui.fixed(this, 36));
 
-        detail = Ui.tv(this, "", 17, Ui.TEXT, Gravity.LEFT);
-        detail.setPadding(Ui.dp(this, 18), Ui.dp(this, 12), Ui.dp(this, 18), Ui.dp(this, 12));
-        detail.setBackground(Ui.round(Ui.CARD, 12, this));
+        detail = Ui.tv(this, "", 21, Ui.TEXT, Gravity.LEFT);
+        detail.setPadding(Ui.dp(this, 24), Ui.dp(this, 18), Ui.dp(this, 24), Ui.dp(this, 18));
+        detail.setBackground(Ui.round(Ui.CARD, Ui.RADIUS_DP, this));
         detail.setLineSpacing(0, 1.22f);
         ScrollView detailScroll = new ScrollView(this);
         detailScroll.setFillViewport(true);
@@ -134,11 +134,11 @@ public class WrongBookActivity extends Activity {
         btnBack = addButton(row, "返回控制台", Ui.PURPLE, new View.OnClickListener() {
             @Override public void onClick(View v) { finish(); }
         });
-        l.addView(row, Ui.fixed(this, 56));
+        l.addView(row, Ui.fixed(this, 74));
 
         l.addView(Ui.tv(this,
                 "遥控器方向键选中按钮后按确定；答错会立即记录到这里。",
-                13, Ui.MUTED), Ui.fixed(this, 24));
+                16, Ui.MUTED), Ui.fixed(this, 34));
         return l;
     }
 

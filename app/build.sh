@@ -7,8 +7,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP="$ROOT/app"
 BUILD="$ROOT/.build"
 DIST="$ROOT/dist"
-VERSION_NAME="1.0.4"
-VERSION_CODE="21"
+VERSION_NAME="1.0.5"
+VERSION_CODE="22"
 APK_NAME="PoHW-v${VERSION_NAME}.apk"
 
 : "${JAVA_HOME:=/opt/jdk17}"
@@ -131,8 +131,12 @@ grep -q 'rebuildOverlay' "$SVC"
 grep -q 'onWindowFocusChanged' "$VIEW"
 grep -q 'requestExit' "$VIEW"                   # 返回键不在按键分发栈内同步摘窗口
 grep -q 'QuizRound' "$SVC"                     # 家长设置的每轮题数进入守护服务
-# v1.0.4 P0：退出门禁（本次弹题至少答对 1 题）双端校验，禁止被改回「按返回直接走」。
+# v1.0.5 P0：退出门禁（家长可配，默认答对 5 题）双端校验，阈值必须来自家长设置。
 grep -q 'ExitPolicy.canExit' "$SVC"
+grep -q 'requiredCorrect = st.requiredCorrect();' "$SVC"
+grep -q 'setExitGate(requiredCorrect' "$SVC"
+grep -q 'requiredCorrect()' "$SET"
+grep -q 'TYPE_SCALE' "$APP/src/com/jager/tvquiz/Ui.java"
 grep -q 'exitAllowed' "$VIEW"                # View 层持有同一门禁的放行标记
 grep -q 'ExitPolicy.tip' "$VIEW"             # 锁定 / 解锁提示由策略类统一生成
 grep -q 'sessionCorrect' "$SVC"

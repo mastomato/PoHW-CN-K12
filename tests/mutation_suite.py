@@ -36,7 +36,8 @@ CHK = os.path.join(ROOT, "tests/bank_distribution_check.py")
 R = os.path.join(ROOT, "tests/run.sh")
 BK_DIR = tempfile.mkdtemp(prefix="pohw_mut_bk_")
 BK = {}
-for p in (M, S, E, D, O, ST, W, LP, B, MF, C, CHK, V, KR, EP, MPC, R):
+for p in (M, S, E, D, O, ST, W, LP, B, MF, C, CHK, V, KR, EP, MPC, R,
+          os.path.join(SRC, "Ui.java")):
     BK[p] = os.path.join(BK_DIR, os.path.basename(p) + ".bk")
     shutil.copyfile(p, BK[p])
 ORIG = {p: hashlib.sha256(open(p, "rb").read()).hexdigest() for p in BK}
@@ -139,7 +140,7 @@ MUTATIONS = [
     ("O", "service stops passing the fourth weight",
      lambda: replace(O, "st.weight(Subjects.OTHER)", "0"), False, True, False),
     ("P", "versionCode rolled back",
-     lambda: replace(B, 'VERSION_CODE="21"', 'VERSION_CODE="20"'), False, True, False),
+     lambda: replace(B, 'VERSION_CODE="22"', 'VERSION_CODE="21"'), False, True, False),
     ("Q", "OTHER routing disabled",
      lambda: replace(D, "boolean other = s == Subjects.OTHER && allSubjects;", "boolean other = false;"), True, True, False),
     ("R", "single WHERE binding",
@@ -150,7 +151,7 @@ MUTATIONS = [
     ("U", "empty non-core pool ignored",
      lambda: replace(E, "db.hasOtherQuestions()", "true"), False, True, False),
     ("V", "row gap removed",
-     lambda: replace(S, "ROW_GAP_DP = 12", "ROW_GAP_DP = 0"), False, True, False),
+     lambda: replace(S, "ROW_GAP_DP = 14", "ROW_GAP_DP = 0"), False, True, False),
     ("W", "boot autostart default flipped back on",
      lambda: replace(ST, 'getBoolean("bootAutostart", false)',
                      'getBoolean("bootAutostart", true)'), False, True, False),
@@ -170,8 +171,8 @@ MUTATIONS = [
                      'note(online, "打赏作者 · 请喝一杯咖啡"); note(online, "默认完全离线：'),
      False, True, False),
     # v1.0.4：退出门禁与持续暂停，任何一处回退都必须被布局契约拦下。
-    ("AC", "exit threshold lowered to zero",
-     lambda: replace(EP, "REQUIRED_CORRECT = 1", "REQUIRED_CORRECT = 0"), False, True, False),
+    ("AC", "exit threshold rolled back to one",
+     lambda: replace(EP, "DEFAULT_REQUIRED_CORRECT = 5", "DEFAULT_REQUIRED_CORRECT = 1"), False, True, False),
     ("AD", "view back key gate removed",
      lambda: replace(V, "if (!exitAllowed) { nudgeExit(); return; }",
                      "if (false) { nudgeExit(); return; }"), False, True, False),
@@ -191,6 +192,16 @@ MUTATIONS = [
     ("AI", "exit gate JVM test unwired",
      lambda: replace(R, "ExitGateTest.java", "ExitGateTest.class"),
      False, True, False),
+    # v1.0.5：大字版与可配置门禁，任何一处回退都必须被布局契约拦下。
+    ("AJ", "global type scale rolled back",
+     lambda: replace(os.path.join(SRC, "Ui.java"), "TYPE_SCALE = 1.35f", "TYPE_SCALE = 1.0f"),
+     False, True, False),
+    ("AK", "service ignores parent threshold",
+     lambda: replace(O, "requiredCorrect = st.requiredCorrect();", "requiredCorrect = 1;"),
+     False, True, False),
+    ("AL", "view gate no longer receives progress",
+     lambda: replace(V, "exitAllowed = ExitPolicy.canExit(sessionCorrect, requiredCorrect);",
+                     "exitAllowed = true;"), False, True, False),
 ]
 
 print("--- baseline ---")

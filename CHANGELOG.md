@@ -1,5 +1,15 @@
 # 更新记录
 
+## 1.0.5 · 2026-11-08
+
+家长可配置退出门禁 + 全站大字版，versionCode 升至 22。
+
+- **「答对才能返回」可配置**：家长设置新增 1–10 题的循环选择，**默认 5 题**；`SettingsStore.requiredCorrect()` 用 `commit()` 同步落盘并夹到合法区间。`ExitPolicy` 保留纯 Java 单一规则源，改为 `canExit(sessionCorrect, required)` / `normalizeRequired()` / `remaining()`，兼容单参重载按默认 5 题判断。
+- **双端门禁同步**：`QuizOverlayService.showQuiz()` 每次弹题重新读取阈值并重置会话计数；答对后用 `setExitGate(required, correct, pinSet)` 把阈值与进度下发给 `OverlayQuizView`；`finishQuiz()` 与 tick 的两道校验都改用 `ExitPolicy.canExit(sessionCorrect, requiredCorrect)`。提示与拦截文案显示「需答对 N 题 / 还差 K 题」，主页「学习配置」也显示当前阈值。
+- **全站字号与视觉**：`Ui.TYPE_SCALE = 1.35f` + `scaledSp()` 统一放大 `Ui.tv()` / `Ui.button()` 产出的所有文字；`QuizTextSizer` 新档位 26/29/32/35/38（长题最小约 35sp 实际字号），答题页题干用 `QUESTION_BASE_SP` 与 `Ui.scaledSp()` 对齐。加深 `MUTED` 对比度、统一 `RADIUS_DP` 卡片圆角、加粗焦点描边，主页/设置/答题/密码浮层/错题库的按钮、行高、卡片内边距与固定高度同步放大，WRAP_CONTENT 行仍随系统字体缩放自适应。
+- **验证**：布局契约 145 条、JVM 检查 9 组 238 项通过；`ExitGateTest` 扩展到 37 项覆盖默认值、边界夹取、可配置阈值与进度文案；变异套件新增 3 组大字/门禁回退用例。签名仍沿用 `e5816bdd…212286c`，可直接覆盖 1.0.1 / 1.0.2 / 1.0.4。
+
+
 ## 1.0.4 · 2026-11-07
 
 修复 1.0.3 连续答题改造引入的两个行为问题，versionCode 升至 21。
