@@ -12,23 +12,14 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 /**
- * 代码布局公共工具：统一尺寸、字号、卡片圆角与遥控器焦点高亮。
+ * 代码布局公共工具：统一尺寸、卡片圆角与遥控器焦点高亮。
  *
- * v1.0.5 大字版：所有页面文本都经过 {@link #scaledSp(float)} 放大，
- * 一处调整即可覆盖主页 / 家长设置 / 答题页 / 密码浮层 / 错题库，
- * 避免逐页漏改、字号回退。固定高度由各页面同步放大，行高用 WRAP_CONTENT
- * 自适应系统字体缩放，不会裁切大字号。
+ * v1.0.5 逐页重排：字号由每个页面按自身空间显式指定，不做全局等比放大。
+ * 标题大、正文适中、说明小；卡片/按钮/行高按该页文字量单独配过，
+ * 答题页更是用一屏预算重新分区。这样既放大了远距离可读性，又不会溢出裁切。
  */
 public final class Ui {
     private Ui() {}
-
-    /** 电视远距离观看的全局字号倍率：基准 sp × 1.35。 */
-    public static final float TYPE_SCALE = 1.35f;
-
-    /** 把设计基准 sp 换算成实际 sp；所有 Ui.tv / Ui.button 都必须走这里。 */
-    public static int scaledSp(float baseSp) {
-        return Math.round(baseSp * TYPE_SCALE);
-    }
 
     // 与答题页共用的浅色底、白色卡片和紫色遥控器焦点。
     public static final int BG = 0xFFF3F5FC;
@@ -82,7 +73,7 @@ public final class Ui {
     public static TextView tv(Context c, String text, int sp, int color, int gravity) {
         TextView t = new TextView(c);
         t.setText(text);
-        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, scaledSp(sp));
+        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
         t.setTextColor(color);
         t.setGravity(gravity);
         return t;
@@ -95,7 +86,7 @@ public final class Ui {
     public static Button button(Context c, String text, int bg, int fg, int sp) {
         Button b = new Button(c);
         b.setText(text);
-        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, scaledSp(sp));
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
         b.setTextColor(fg);
         b.setAllCaps(false);
         b.setMinHeight(0);

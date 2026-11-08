@@ -35,7 +35,7 @@ v1.0.1 起控制台只有一个守护开关：`GuardState.toggleColor(running)` 
 左右关系，保证 TV 遥控器能在教材版本与题目配比之间移动，且不需要跨栏跳转。
 单列行两端未显式定义的左右目标指向自身（URL `EditText` 例外，左右键留给光标移动），
 避免系统按几何邻近把焦点甩到相邻行；行按钮 `WRAP_CONTENT` + 44dp 最小高度，兼容系统大字模式。
-源码结构由 `tests/layout_contract.py` 的 **145 条**断言在构建门禁里守住，
+源码结构由 `tests/layout_contract.py` 的 **151 条**断言在构建门禁里守住，
 `build.sh` 另在签名后强制比对发布证书指纹。
 
 **学科配比（versionCode 15）**：`SubjectWeights` 保存数 / 语 / 英 / 其他四槽权重（默认 5:3:2:2）。
@@ -49,7 +49,7 @@ v1.0.1 起控制台只有一个守护开关：`GuardState.toggleColor(running)` 
 提取真实 SQL 实跑内置题库，验证池隔离、配比分布与全学科关闭时 0 题，纳入 `[0/9]` 门禁。
 兜底是**池保持**的：先只放宽年级（`POOL_CORE_ALL` / `POOL_OTHER_ALL`），最后才全库；
 空池用 `MAX(1, (SELECT COUNT(*) ...))` 保证 `OFFSET` 不为 NULL，避免 SQL 异常被吞后静默串池。
-同一批 `POOL_*` 常量、双份参数绑定与三层兜底都被 145 条契约和 `tests/mutation_suite.py` 的 38 组负向变异钉死。
+同一批 `POOL_*` 常量、双份参数绑定与三层兜底都被 151 条契约和 `tests/mutation_suite.py` 的 40 组负向变异钉死。
 
 **默认开关与启动链路**：全新安装时「开机自启」关、「启动即守护」开、答题暂停与恢复播放均开。
 `MainActivity.onCreate()` 用 `LaunchPolicy.shouldAutoGuard()` 判定是否自动拉起守护，四个条件缺一不可：
@@ -213,9 +213,10 @@ Android 8+ 的「5 秒内前台化」要求；`onDestroy()` 还会显式 `stopFo
 随后用 `setExitGate(requiredCorrect, sessionCorrect, st.hasPin())` 把阈值与进度一起下发给 View；
 答对后重发一次。View 的 `tip()` / `blockedHint()` 因此能显示「需答对 N 题 / 还差 K 题」。
 
-字号统一由 `Ui.TYPE_SCALE = 1.35f` 与 `Ui.scaledSp()` 收口，`Ui.tv()` / `Ui.button()` 全部经过它；
-答题页题干是唯一直接 `setTextSize` 的控件，改用 `Ui.scaledSp(Math.min(QUESTION_BASE_SP, QuizTextSizer.sp(text)))`
-保持一致。固定高度、按钮最小高度、卡片内边距同步放大，`WRAP_CONTENT` 行继续随系统字体缩放自适应。
+字号不做全局等比放大：主页 / 家长设置 / 密码浮层 / 错题库按各自版面显式给出分级 sp，
+固定高度、按钮最小高度与卡片内边距按该页文字量单独配过。答题页回到 1.0.4 的竖排四行结构：题干按长度放大到 24–34sp、选项 27sp，
+题干卡与四行选项按 `weight` 吃掉原本空着的上下空间，行更高更舒展；
+标题略收、提示保持小字，遥控器仍用原来的线性四向导航。
 
 ## 1.0.4 行为修复
 
@@ -267,12 +268,12 @@ Android 8+ 的「5 秒内前台化」要求；`onDestroy()` 还会显式 `stopFo
 
 ### 门禁与测试
 
-`app/build.sh [0/9]` 用符号级断言钉死 `ExitPolicy.canExit`、`requiredCorrect = st.requiredCorrect()`、`exitAllowed`、`TYPE_SCALE`、
+`app/build.sh [0/9]` 用符号级断言钉死 `ExitPolicy.canExit`、`requiredCorrect = st.requiredCorrect()`、`exitAllowed`、逐页分级字号、
 `sessionCorrect`、`getActiveSessions`、`PULSE_INTERVAL`、`SEM_HOME`、
 `SEM_PARENT`、Manifest 中的 `.MediaSessionListener`，并显式禁止
 `onExit() { finishQuiz(); }` 这种无门禁回退写法。`tests/layout_contract.py`
-145 条断言、`tests/run.sh` 9 组 238 项 JVM 检查（含新增 `ExitGateTest`）、
-`tests/mutation_suite.py` 38 组负向变异（AC–AL 覆盖可配置门禁与全站大字版）共同守住行为。
+151 条断言、`tests/run.sh` 9 组 238 项 JVM 检查（含新增 `ExitGateTest`）、
+`tests/mutation_suite.py` 40 组负向变异（AC–AN 覆盖可配置门禁、逐页排版与焦点配色回归）共同守住行为。
 
 ### 签名与覆盖安装
 

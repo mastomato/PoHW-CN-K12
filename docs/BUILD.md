@@ -99,7 +99,7 @@ Gradle Wrapper、联网拉依赖和一套额外的构建缓存。命令行链路
 `EXTRA_STOP_VERIFIED`。另外确认 `QuickBootReceiver` 已注册、
 `KeyRouter` / `QuizFlow` / `BehaviorV601Test` 真的被编译与执行。
 
-`[0/9]` 还会执行 `python3 tests/layout_contract.py`：**145 条**源码级布局与发布契约断言，
+`[0/9]` 还会执行 `python3 tests/layout_contract.py`：**151 条**源码级布局与发布契约断言，
 覆盖首页 3×2 网格、设置页单列卡片流、等宽 weight 布局、四向 DPAD 焦点链、
 滚动容器参数（`setFillViewport` / `Ui.fill(1)` / wrap-content 子容器）、
 四槽学科权重、双路径 SQL、题目学科标签反推以及证书门禁本身；复审加固后还钉死
@@ -111,7 +111,7 @@ OTHER 池路由字面量、SQL 双份参数绑定、池保持兜底常量、`has
 `QuizDb.java` 的 `POOL_*` 命名常量提取与 Java 同源的真实 SQL，校验双份绑定与三层兜底，
 对内置题库做 9 年级 × 4 池 × 60 次池隔离、两次 5000 次配比分布、全学科关闭 0 题校验，
 以及 `FALLBACK_POOL_OK`（模拟三年级英语池 / 其他池为空，兜底仍保持学科约束、不串池）。
-`tests/mutation_suite.py` 落仓库可复核：**38 组负向变异**（含注释诱饵、破坏绑定、
+`tests/mutation_suite.py` 落仓库可复核：**40 组负向变异**（含注释诱饵、破坏绑定、
 去掉池保持兜底、不带发布密钥构建、恢复 gradeWide SQL，以及 v1.0.4 新增的 AC–AI 七组
 退出门禁 / 持续暂停回退）全部被契约 / 运行时分布 / 构建门禁拦下，
 末尾自动恢复源码哈希并用发布密钥重建 `dist/`。
@@ -163,5 +163,5 @@ grep -q 'SEM_HOME' "$KR" / 'SEM_PARENT' "$KR"
 
 并显式禁止 `onExit() { finishQuiz(); }`——返回键不得在无门禁的情况下摘窗口。
 `tests/layout_contract.py` 中对应的断言用**去注释后的代码**判断，
-把实现注释掉、把 `DEFAULT_REQUIRED_CORRECT` 从 5 改回 1、或把 `TYPE_SCALE` 调回 1.0，都会被 145 条契约拦下；
+把实现注释掉、把 `DEFAULT_REQUIRED_CORRECT` 从 5 改回 1、或重新引入全局字号倍率，都会被 151 条契约拦下；
 `tests/mutation_suite.py` 的 AC–AI 七组变异会实际改源码再跑一遍，确认门禁真的生效。

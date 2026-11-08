@@ -393,7 +393,7 @@ public class SettingsActivity extends Activity {
         urlEdit = new EditText(this);
         urlEdit.setSingleLine(true);
         urlEdit.setHint("https://your-server/  (index.json 所在目录)");
-        urlEdit.setTextSize(Ui.scaledSp(18));
+        urlEdit.setTextSize(18);
         urlEdit.setTextColor(Ui.TEXT);
         urlEdit.setHintTextColor(Ui.MUTED);
         urlEdit.setBackground(Ui.roundBorder(Ui.BTN_BG, Ui.BORDER, 8, this));

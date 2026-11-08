@@ -178,8 +178,8 @@ check("SubjectWeights.MAX_WEIGHT + 1" in raw_s,
       "UI weight cycle is driven by the same max weight")
 check("Subjects.norm(subject)" in _st and '"w" + s' in _st,
       "settings store persists all four normalized slots")
-check('android:versionCode="22"' in _mf, "manifest versionCode advances to 22")
-check('VERSION_CODE="22"' in b, "build script versionCode advances to 22")
+check('android:versionCode="23"' in _mf, "manifest versionCode advances to 23")
+check('VERSION_CODE="23"' in b, "build script versionCode advances to 23")
 check("SubjectWeights.java" in _run and "SubjectWeightsTest" in _run,
       "new weights class and JVM test are wired into the test runner")
 check("bank_distribution_check.py" in b,
@@ -332,11 +332,11 @@ _st5 = strip_comments(read(os.path.join(_src, "SettingsStore.java")))
 _pin = read(os.path.join(_src, "PinVerifyView.java"))
 _wrong = read(os.path.join(_src, "WrongBookActivity.java"))
 
-check("TYPE_SCALE = 1.35f" in _ui and "scaledSp(" in _ui,
-      "one global type scale drives every page typography")
-check("t.setTextSize(TypedValue.COMPLEX_UNIT_SP, scaledSp(sp))" in _ui
-      and "b.setTextSize(TypedValue.COMPLEX_UNIT_SP, scaledSp(sp))" in _ui,
-      "both TextView and Button go through the shared scale")
+check("TYPE_SCALE" not in _ui and "scaledSp" not in _ui,
+      "no global type scale: every page sets its own sp after relayout")
+check("t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp)" in _ui
+      and "b.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp)" in _ui,
+      "Ui applies the caller's sp verbatim, page by page")
 check("MUTED = 0xFF63667F" in _ui, "secondary text contrast improved for TV distance")
 check("RADIUS_DP" in _ui and "setStroke(dp(c, 3), stroke)" in _ui,
       "cards share a radius and focus strokes are thicker")
@@ -363,11 +363,23 @@ check("ExitPolicy.MAX_REQUIRED_CORRECT" in s,
       "threshold cycling is bounded by the policy constants")
 check("st.requiredCorrect()" in m and "答对才能返回：" in m,
       "home status line reflects the configured threshold")
-check("QUESTION_BASE_SP" in _v and "Ui.scaledSp(Math.min(QUESTION_BASE_SP" in _v,
-      "quiz question uses the scaled large-text sizer")
-check("if (n > 72) return 26;" in _sizer and "return 38;" in _sizer,
-      "long questions keep a readable minimum size")
-check("Ui.scaledSp(18)" in raw_s, "URL field uses the shared scale instead of a raw size")
+check('label("答题练习", 30' in _v
+      and "Math.min(34, QuizTextSizer.sp(q.text))" in _v
+      and "for (int i = 0; i < opts.length; i++)" in _v
+      and "LinearLayout options = Ui.vbox(c)" in _v
+      and "new LinearLayout.LayoutParams(-1, 0, 1f)" in _v
+      and 'Ui.button(c, "", 0xFFF7F7FB, INK, 27)' in _v
+      and "RESULT_HINT" in _v and "new LinearLayout.LayoutParams(-1, dp(96))" in _v
+      and "LinearLayout resultBox = Ui.hbox(c)" in _v and "resultBox.setGravity(Gravity.BOTTOM)" in _v
+      and "question.setMaxLines(4)" in _v and "explain.setMaxLines(3)" in _v
+      and "completeView.setGravity(Gravity.CENTER)" in _v
+      and 'scoreBig.setText("答对 " + correct + " / " + total + " 题")' in _v
+      and "progressFill" in _v and "SpannableString" in _v,
+      "quiz keeps four tall rows, a progress bar and a fixed result panel for post-answer detail")
+check("if (n > 72) return 24;" in _sizer and "return 34;" in _sizer,
+      "long questions stay readable without squeezing the option grid")
+check("urlEdit.setTextSize(18)" in raw_s,
+      "URL field uses an explicit sp after the global scale was removed")
 check('"家长设置", 28' in raw_s and '"知行答题守护", 38' in m,
       "page titles are enlarged for TV viewing")
 check("Ui.RADIUS_DP" in raw_s and "Ui.RADIUS_DP" in m
@@ -375,5 +387,29 @@ check("Ui.RADIUS_DP" in raw_s and "Ui.RADIUS_DP" in m
       "all pages share the unified card radius")
 check("Ui.fixed(this, 64)" in m and "Ui.fixed(this, 48)" in s,
       "fixed heights grow with the larger type scale")
+check(m.count("setLineSpacing(Ui.dp(this, 2), 1.08f)") == 2
+      and "card.setPadding(Ui.dp(this, 26)" in m
+      and '.append("每 ").append(st.intervalSec()).append(" 秒 · 每轮 ")' in m,
+      "home cards stay compact so enlarged text is never clipped")
+
+
+# ---- 真机复核：卡片不裁切 + 6 个按钮只在焦点态变色 ----
+check('actionButton(row1, "立即出题", Ui.CARD' in m
+      and 'GuardState.toggleLabel(false),\n                Ui.CARD,' in m,
+      "all six home action buttons stay light until focused")
+check("paintButton(btnGuard, GuardState.toggleLabel(running));" in m
+      and "Ui.roundBorder(focused ? Ui.PURPLE_LIGHT : Ui.CARD" in m,
+      "only remote focus changes a home button colour, not guard state")
+
+
+# ---- 逐页分级字号（真机排版复核） ----
+check('Ui.tv(this, "知行答题守护", 38' in m and 'Ui.tv(this, "家长设置", 28' in raw_s
+      and 'Ui.tv(this, text, 16, Ui.MUTED' in s,
+      "home > settings title > note is an explicit type hierarchy")
+check('label("", 16, MUTED' in _v and 'label("", 19, PURPLE' in _v
+      and '知行答题  /  答题守护", 16' in _v,
+      "quiz hint / topic / brand stay restrained while the question grows")
+check('Ui.button(this, label, bg, fg, 20)' in m and 'Ui.button(this, "", Ui.BTN_BG, Ui.TEXT, 18)' in s,
+      "button sizes are chosen per page, not multiplied globally")
 
 print("LAYOUT_CONTRACT_OK total=%d" % TOTAL)

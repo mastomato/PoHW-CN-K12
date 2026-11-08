@@ -7,8 +7,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP="$ROOT/app"
 BUILD="$ROOT/.build"
 DIST="$ROOT/dist"
-VERSION_NAME="1.0.5"
-VERSION_CODE="22"
+VERSION_NAME="1.0.6"
+VERSION_CODE="23"
 APK_NAME="PoHW-v${VERSION_NAME}.apk"
 
 : "${JAVA_HOME:=/opt/jdk17}"
@@ -59,7 +59,7 @@ grep -q 'WrongBookActivity' "$APP/AndroidManifest.xml"
 # v1.0.1 UI consolidation: one toggle, subject rows, bank entry only in settings
 MAIN="$APP/src/com/jager/tvquiz/MainActivity.java"
 SET="$APP/src/com/jager/tvquiz/SettingsActivity.java"
-grep -q 'GuardState.toggleColor' "$MAIN"
+grep -q 'GuardState.toggleLabel' "$MAIN"
 grep -q 'GuardState.toggleLabel' "$MAIN"
 grep -q 'toggleGuard()' "$MAIN"
 grep -q 'addSubjectRow' "$SET"
@@ -136,7 +136,16 @@ grep -q 'ExitPolicy.canExit' "$SVC"
 grep -q 'requiredCorrect = st.requiredCorrect();' "$SVC"
 grep -q 'setExitGate(requiredCorrect' "$SVC"
 grep -q 'requiredCorrect()' "$SET"
-grep -q 'TYPE_SCALE' "$APP/src/com/jager/tvquiz/Ui.java"
+if grep -q 'TYPE_SCALE' "$APP/src/com/jager/tvquiz/Ui.java"; then
+  echo 'FORBIDDEN: no global type scale; each page sets its own sp'; exit 1
+fi
+grep -q '选项区按 weight 撑满' "$VIEW"
+grep -q 'Math.min(34, QuizTextSizer.sp(q.text))' "$VIEW"
+grep -q 'Ui.button(c, "", 0xFFF7F7FB, INK, 27)' "$VIEW"
+grep -q 'question.setMaxLines(4)' "$VIEW"
+grep -q 'explain.setMaxLines(3)' "$VIEW"
+grep -q 'completeView.setGravity(Gravity.CENTER)' "$VIEW"
+grep -q 'progressFill' "$VIEW"
 grep -q 'exitAllowed' "$VIEW"                # View 层持有同一门禁的放行标记
 grep -q 'ExitPolicy.tip' "$VIEW"             # 锁定 / 解锁提示由策略类统一生成
 grep -q 'sessionCorrect' "$SVC"

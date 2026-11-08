@@ -49,13 +49,11 @@ public final class ExitPolicy {
         int need = normalizeRequired(required);
         int done = Math.max(0, sessionCorrect);
         if (canExit) {
-            return "方向键选择，按确定作答；已答对 " + done
-                    + " 题，按返回键退出答题。";
+            return "已答对 " + done + " 题，按返回键退出答题。";
         }
-        String base = "方向键选择，按确定作答；本次需答对 " + need
-                + " 题才能返回（已答对 " + done + " 题，还差 "
-                + remaining(required, sessionCorrect) + " 题）。";
-        return parentPinSet ? base + "家长可按菜单键输密码退出。" : base;
+        String base = "需答对 " + need + " 题才能返回（还差 "
+                + remaining(required, sessionCorrect) + " 题）· 方向键选择、确定作答。";
+        return parentPinSet ? base + " 家长可按菜单键输密码退出。" : base;
     }
 
     public static String tip(boolean canExit, boolean parentPinSet, int required) {

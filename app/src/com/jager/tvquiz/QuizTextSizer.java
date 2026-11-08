@@ -4,13 +4,13 @@ public final class QuizTextSizer {
 
     private QuizTextSizer() {}
 
-    /** v1.0.5 大字版：长题也有 26sp 基准，配合 Ui.TYPE_SCALE 后最小约 35sp。 */
+    /** 答题页居中大字：24–34sp，按题面长度自适应，长题也不会挤掉选项网格。 */
     public static int sp(String s) {
         int n = s == null ? 0 : s.length();
-        if (n > 72) return 26;
-        if (n > 48) return 29;
-        if (n > 28) return 32;
-        if (n > 16) return 35;
-        return 38;
+        if (n > 72) return 24;
+        if (n > 48) return 27;
+        if (n > 28) return 30;
+        if (n > 16) return 32;
+        return 34;
     }
 }

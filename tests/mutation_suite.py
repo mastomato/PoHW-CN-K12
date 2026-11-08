@@ -194,7 +194,8 @@ MUTATIONS = [
      False, True, False),
     # v1.0.5：大字版与可配置门禁，任何一处回退都必须被布局契约拦下。
     ("AJ", "global type scale rolled back",
-     lambda: replace(os.path.join(SRC, "Ui.java"), "TYPE_SCALE = 1.35f", "TYPE_SCALE = 1.0f"),
+     lambda: replace(os.path.join(SRC, "Ui.java"), "    public static final int BG",
+                     "    public static final float TYPE_SCALE = 1.35f;\n    public static final int BG"),
      False, True, False),
     ("AK", "service ignores parent threshold",
      lambda: replace(O, "requiredCorrect = st.requiredCorrect();", "requiredCorrect = 1;"),
@@ -202,6 +203,12 @@ MUTATIONS = [
     ("AL", "view gate no longer receives progress",
      lambda: replace(V, "exitAllowed = ExitPolicy.canExit(sessionCorrect, requiredCorrect);",
                      "exitAllowed = true;"), False, True, False),
+    ("AN", "home action button regains a permanent purple fill",
+     lambda: replace(M, 'actionButton(row1, "立即出题", Ui.CARD,',
+                     'actionButton(row1, "立即出题", Ui.PURPLE,'), False, True, False),
+    ("AM", "home card spacing inflated again (clipping regression)",
+     lambda: replace(M, "status.setLineSpacing(Ui.dp(this, 2), 1.08f)",
+                     "status.setLineSpacing(Ui.dp(this, 8), 1.15f)"), False, True, False),
 ]
 
 print("--- baseline ---")

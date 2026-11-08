@@ -16,25 +16,24 @@ public class QuizLayoutTest {
     }
 
     public static void main(String[] args) {
-        ok("null 题干安全降级为 38sp 大字基准", QuizTextSizer.sp(null) == 38);
-        ok("短题 12 字 -> 38sp 大字基准", QuizTextSizer.sp(cn(12)) == 38);
-        ok("17~28 字 -> 35sp", QuizTextSizer.sp(cn(20)) == 35);
-        ok("29~48 字 -> 32sp", QuizTextSizer.sp(cn(40)) == 32);
-        ok("49~72 字 -> 29sp", QuizTextSizer.sp(cn(60)) == 29);
-        ok("超过 72 字 -> 26sp", QuizTextSizer.sp(cn(100)) == 26);
+        ok("null 题干 -> 34sp 居中大字", QuizTextSizer.sp(null) == 34);
+        ok("短题 12 字 -> 34sp", QuizTextSizer.sp(cn(12)) == 34);
+        ok("17~28 字 -> 32sp", QuizTextSizer.sp(cn(20)) == 32);
+        ok("29~48 字 -> 30sp", QuizTextSizer.sp(cn(40)) == 30);
+        ok("49~72 字 -> 27sp", QuizTextSizer.sp(cn(60)) == 27);
+        ok("超过 72 字 -> 24sp", QuizTextSizer.sp(cn(100)) == 24);
 
         boolean mono = true;
         int prev = Integer.MAX_VALUE;
         for (int n = 0; n <= 120; n++) {
             int v = QuizTextSizer.sp(cn(n));
-            if (v > prev || v < 26 || v > 38) mono = false;
+            if (v > prev || v < 24 || v > 34) mono = false;
             prev = v;
         }
-        ok("0~120 字字号单调不增且恒在 26~38sp", mono);
+        ok("0~120 字字号单调不增且恒在 24~34sp", mono);
 
         double oldNeedDp = 18 * 1.25 * 2.0;
         ok("复现裁切根因：两行 18sp 需 45dp > 旧固定 42dp", oldNeedDp > 42);
-
         double newNeedDp = 16 * 1.15 * 2.0 + 2 + 6;
         double fixedOthersDp = 186 + 34 + 34 + 50 + 26 + 20;
         double cardMinDp = 500.0;

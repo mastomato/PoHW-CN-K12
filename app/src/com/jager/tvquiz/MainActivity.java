@@ -244,13 +244,13 @@ public class MainActivity extends Activity {
         cards.setGravity(Gravity.CENTER_VERTICAL);
         heroStatus = Ui.tv(this, "", 32, Ui.PURPLE, Gravity.LEFT);
         heroStatus.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        guardDetail = Ui.tv(this, "", 22, Ui.TEXT, Gravity.LEFT);
+        guardDetail = Ui.tv(this, "", 21, Ui.TEXT, Gravity.LEFT);
         addSummaryCard(cards, "守护状态", heroStatus, guardDetail);
-        status = Ui.tv(this, "", 22, Ui.TEXT, Gravity.LEFT);
-        status.setLineSpacing(Ui.dp(this, 8), 1.15f);
+        status = Ui.tv(this, "", 21, Ui.TEXT, Gravity.LEFT);
+        status.setLineSpacing(Ui.dp(this, 2), 1.08f);
         addSummaryCard(cards, "学习配置", status);
-        statusRight = Ui.tv(this, "", 22, Ui.TEXT, Gravity.LEFT);
-        statusRight.setLineSpacing(Ui.dp(this, 8), 1.15f);
+        statusRight = Ui.tv(this, "", 21, Ui.TEXT, Gravity.LEFT);
+        statusRight.setLineSpacing(Ui.dp(this, 2), 1.08f);
         addSummaryCard(cards, "题库与设备", statusRight);
         l.addView(cards, Ui.fill(1));
 
@@ -260,11 +260,11 @@ public class MainActivity extends Activity {
         LinearLayout row1 = Ui.hbox(this);
         Button[] r1 = new Button[GRID_COLS];
         r1[0] = btnGuard = actionButton(row1, GuardState.toggleLabel(false),
-                GuardState.toggleColor(false),
+                Ui.CARD,
                 new View.OnClickListener() {
                     @Override public void onClick(View v) { toggleGuard(); }
                 });
-        r1[1] = actionButton(row1, "立即出题", Ui.PURPLE, new View.OnClickListener() {
+        r1[1] = actionButton(row1, "立即出题", Ui.CARD, new View.OnClickListener() {
             @Override public void onClick(View v) {
                 if (!canDraw()) { openOverlaySettings(); return; }
                 send(QuizOverlayService.ACTION_QUIZ_NOW);
@@ -313,13 +313,13 @@ public class MainActivity extends Activity {
     private void addSummaryCard(LinearLayout row, String heading, TextView... values) {
         LinearLayout card = Ui.vbox(this);
         card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(Ui.dp(this, 30), Ui.dp(this, 28), Ui.dp(this, 30), Ui.dp(this, 28));
+        card.setPadding(Ui.dp(this, 26), Ui.dp(this, 20), Ui.dp(this, 26), Ui.dp(this, 20));
         card.setBackground(Ui.round(Ui.CARD, Ui.RADIUS_DP, this));
-        TextView caption = Ui.tv(this, heading, 20, Ui.MUTED, Gravity.LEFT);
+        TextView caption = Ui.tv(this, heading, 19, Ui.MUTED, Gravity.LEFT);
         card.addView(caption);
         for (TextView value : values) {
             LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
-            p.topMargin = Ui.dp(this, 22);
+            p.topMargin = Ui.dp(this, 12);
             card.addView(value, p);
         }
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, -1, 1);
@@ -384,18 +384,25 @@ public class MainActivity extends Activity {
     }
 
     private void paintGuardButton(boolean running) {
-        paintButton(btnGuard, GuardState.toggleColor(running), GuardState.toggleLabel(running));
+        paintButton(btnGuard, GuardState.toggleLabel(running));
     }
 
     private static void setButtonText(Button b, String label) {
         if (b != null && !label.equals(b.getText().toString())) b.setText(label);
     }
 
-    private void paintButton(Button b, int bg, String label) {
+    /**
+     * 6 个操作按钮常态完全一致：浅色卡片 + 灰描边。
+     * 只有遥控器焦点落上来时，Ui.focus 才把它切成浅紫底 + 紫色描边，
+     * 避免「关闭守护 / 立即出题」长期占着一块高饱和色抢视觉。
+     */
+    private void paintButton(Button b, String label) {
         setButtonText(b, label);
-        Ui.focus(b, this, bg, Ui.PURPLE_DARK, Ui.CARD);
-        b.setBackground(Ui.round(bg, 10, this));
-        b.setTextColor(Ui.CARD);
+        Ui.focus(b, this, Ui.CARD, Ui.TEXT);
+        boolean focused = b.hasFocus();
+        b.setBackground(Ui.roundBorder(focused ? Ui.PURPLE_LIGHT : Ui.CARD,
+                focused ? Ui.PURPLE : Ui.BORDER, Ui.RADIUS_DP, this));
+        b.setTextColor(focused ? Ui.PURPLE_DARK : Ui.TEXT);
     }
 
     private static String ts(long ms) {
@@ -411,8 +418,9 @@ public class MainActivity extends Activity {
         if (qd != cachedDbRef || grade != cachedBankGrade) {
             cachedDbRef = qd;
             cachedBankGrade = grade;
-            cachedBankLine = qd.count() + " 题 / " + qd.knowledgeCount() + " 知识点 · "
-                    + qd.subjectCount() + " 学科 · 本年级 " + qd.countForGrade(grade) + " 题";
+            // 首页只保留题量摘要：知识点 / 学科数在大字版里会把卡片撑出屏幕。
+            cachedBankLine = qd.count() + " 题 · 本年级 "
+                    + qd.countForGrade(grade) + " 题";
         }
         return cachedBankLine;
     }
@@ -425,16 +433,16 @@ public class MainActivity extends Activity {
         heroStatus.setTextColor(running ? Ui.PURPLE : Ui.MUTED);
         String guardText = (running
                 ? (QuizOverlayService.isQuizShowing() ? "答题页已显示"
-                        : "距离下次答题\n" + QuizOverlayService.remainSec() + " 秒")
+                        : "距离下次答题 " + QuizOverlayService.remainSec() + " 秒")
                 : "打开守护后，按设定间隔弹出答题页")
-                + "\n\n开机自启：" + (st.bootAutostart() ? "开" : "关")
-                + "\n启动即守护：" + (st.autoGuardOnBoot() ? "开" : "关");
+                + "\n开机自启：" + (st.bootAutostart() ? "开" : "关")
+                + " · 启动即守护：" + (st.autoGuardOnBoot() ? "开" : "关");
         if (!guardText.equals(guardDetail.getText().toString())) guardDetail.setText(guardText);
 
         StringBuilder s = new StringBuilder();
         s.append(st.gradeLabel()).append(NL)
-                .append("每 ").append(st.intervalSec()).append(" 秒一题").append(NL)
-                .append("每轮 ").append(st.roundCount()).append(" 题").append(NL)
+                .append("每 ").append(st.intervalSec()).append(" 秒 · 每轮 ")
+                .append(st.roundCount()).append(" 题").append(NL)
                 .append("答对才能返回：").append(st.requiredCorrect())
                 .append(" 题").append(NL);
         s.append("学科权重：")
