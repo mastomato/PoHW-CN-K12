@@ -7,8 +7,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP="$ROOT/app"
 BUILD="$ROOT/.build"
 DIST="$ROOT/dist"
-VERSION_NAME="1.0.6"
-VERSION_CODE="23"
+VERSION_NAME="1.0.7"
+VERSION_CODE="24"
 APK_NAME="PoHW-v${VERSION_NAME}.apk"
 
 : "${JAVA_HOME:=/opt/jdk17}"
@@ -140,10 +140,11 @@ if grep -q 'TYPE_SCALE' "$APP/src/com/jager/tvquiz/Ui.java"; then
   echo 'FORBIDDEN: no global type scale; each page sets its own sp'; exit 1
 fi
 grep -q '选项区按 weight 撑满' "$VIEW"
-grep -q 'Math.min(34, QuizTextSizer.sp(q.text))' "$VIEW"
-grep -q 'Ui.button(c, "", 0xFFF7F7FB, INK, 27)' "$VIEW"
-grep -q 'question.setMaxLines(4)' "$VIEW"
-grep -q 'explain.setMaxLines(3)' "$VIEW"
+grep -q '答题页固定满屏' "$VIEW"
+grep -q 'Math.min(30, QuizTextSizer.sp(q.text))' "$VIEW"
+grep -q 'Ui.button(c, "", 0xFFF7F7FB, INK, 24)' "$VIEW"
+grep -q 'question.setMaxLines(3)' "$VIEW"
+grep -q 'explain.setMaxLines(2)' "$VIEW"
 grep -q 'completeView.setGravity(Gravity.CENTER)' "$VIEW"
 grep -q 'progressFill' "$VIEW"
 grep -q 'exitAllowed' "$VIEW"                # View 层持有同一门禁的放行标记
@@ -181,7 +182,7 @@ grep -q 'QuickBootReceiver' "$APP/AndroidManifest.xml"
 grep -q 'BehaviorV601Test' tests/run.sh
 grep -q 'KeyRouter.java' tests/run.sh
 grep -q 'QuizFlow.java' tests/run.sh
-for f in Hashes Subjects AnswerPolicy BootPolicy BootSettings MediaPauseController          WrongBook WrongBookActivity OverlayQuizView KeyRouter QuizFlow QuizRound          ExitPolicy MediaSessionListener; do
+for f in Hashes Subjects AnswerPolicy BootPolicy BootSettings MediaPauseController          WrongBook WrongBookActivity OverlayQuizView KeyRouter QuizFlow QuizRound          ExitPolicy MediaSessionListener AutoFit FitTextView FitButton; do
   [ -f "$APP/src/com/jager/tvquiz/$f.java" ] || { echo "MISSING source: $f.java"; exit 1; }
 done
 if grep -rq -E 'v4[.]1 控制台|DeviceAdmin|startLockTask|DELETE_PACKAGES|pack_hh_|huohua|HH_API_KEY' "$APP/src"; then

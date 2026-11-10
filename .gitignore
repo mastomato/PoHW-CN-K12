@@ -17,3 +17,6 @@ __pycache__/
 
 # 系统
 .DS_Store
+
+# local dev keystore (never commit private keys)
+.dev-keystore.jks

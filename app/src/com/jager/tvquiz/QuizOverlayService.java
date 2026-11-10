@@ -399,7 +399,7 @@ public class QuizOverlayService extends Service {
         st.bumpQuestioned();
 
         // 不复用 View：反复 add/remove 会让窗口焦点状态不可预测。
-        final OverlayQuizView view = new OverlayQuizView(this, listener);
+        final OverlayQuizView view = new OverlayQuizView(TvDisplay.wrap(this), listener);
         view.setExitGate(requiredCorrect, sessionCorrect, st.hasPin());
         view.bind(current, metaFor(current), round.questionNumber(), round.total());
         quizView = view;
@@ -569,7 +569,7 @@ public class QuizOverlayService extends Service {
                     Toast.LENGTH_LONG).show();
             return;
         }
-        PinVerifyView gate = new PinVerifyView(this, st,
+        PinVerifyView gate = new PinVerifyView(TvDisplay.wrap(this), st,
                 new PinVerifyView.Callback() {
                     @Override public void onVerified() {
                         // 摘窗口必须离开按键分发栈后异步执行，和 requestExit 同理。

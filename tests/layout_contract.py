@@ -76,13 +76,14 @@ check(m.count("new Button[GRID_COLS]") == 2, "home has exactly 2 grid rows")
 check(len(re.findall(r"actionButton\(row[12],", m)) == 6, "home has exactly 6 action buttons")
 check("row3" not in m, "legacy third button row removed")
 check(m.count("l.addView(row") == 2, "exactly two grid rows added to the page")
-check("new LinearLayout.LayoutParams(0, Ui.dp(this, 68), 1f)" in m,
+check("new LinearLayout.LayoutParams(0, Ui.dp(this, 66), 1f)" in m,
       "home buttons are equal-width and tall enough for larger labels")
 check(m.count("wireGrid()") == 2, "home declares and calls the grid focus chain")
 for direction in ("setNextFocusLeftId", "setNextFocusRightId",
                   "setNextFocusUpId", "setNextFocusDownId"):
     check(direction in m, "home focus chain includes " + direction)
-check("Ui.fixed(this, 64)" in m, "home title has enough height for the large type scale")
+check("title.setMinimumHeight(Ui.dp(this, 50))" in m,
+      "home title grows with its content instead of a fixed height")
 check("getPackageInfo" in m, "home version still read from PackageManager")
 
 # ---- 家长设置：单列卡片流 ----
@@ -178,8 +179,8 @@ check("SubjectWeights.MAX_WEIGHT + 1" in raw_s,
       "UI weight cycle is driven by the same max weight")
 check("Subjects.norm(subject)" in _st and '"w" + s' in _st,
       "settings store persists all four normalized slots")
-check('android:versionCode="23"' in _mf, "manifest versionCode advances to 23")
-check('VERSION_CODE="23"' in b, "build script versionCode advances to 23")
+check('android:versionCode="24"' in _mf, "manifest versionCode advances to 24")
+check('VERSION_CODE="24"' in b, "build script versionCode advances to 24")
 check("SubjectWeights.java" in _run and "SubjectWeightsTest" in _run,
       "new weights class and JVM test are wired into the test runner")
 check("bank_distribution_check.py" in b,
@@ -334,9 +335,9 @@ _wrong = read(os.path.join(_src, "WrongBookActivity.java"))
 
 check("TYPE_SCALE" not in _ui and "scaledSp" not in _ui,
       "no global type scale: every page sets its own sp after relayout")
-check("t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp)" in _ui
-      and "b.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp)" in _ui,
-      "Ui applies the caller's sp verbatim, page by page")
+check("v.setTextSize(TypedValue.COMPLEX_UNIT_PX, maxPx)" in _ui
+      and "applyType" in _ui,
+      "Ui converts the caller's design sp to pixels through one shared path")
 check("MUTED = 0xFF63667F" in _ui, "secondary text contrast improved for TV distance")
 check("RADIUS_DP" in _ui and "setStroke(dp(c, 3), stroke)" in _ui,
       "cards share a radius and focus strokes are thicker")
@@ -363,32 +364,33 @@ check("ExitPolicy.MAX_REQUIRED_CORRECT" in s,
       "threshold cycling is bounded by the policy constants")
 check("st.requiredCorrect()" in m and "答对才能返回：" in m,
       "home status line reflects the configured threshold")
-check('label("答题练习", 30' in _v
-      and "Math.min(34, QuizTextSizer.sp(q.text))" in _v
+check('label("答题练习", 26' in _v
+      and "Math.min(30, QuizTextSizer.sp(q.text))" in _v
       and "for (int i = 0; i < opts.length; i++)" in _v
       and "LinearLayout options = Ui.vbox(c)" in _v
       and "new LinearLayout.LayoutParams(-1, 0, 1f)" in _v
-      and 'Ui.button(c, "", 0xFFF7F7FB, INK, 27)' in _v
-      and "RESULT_HINT" in _v and "new LinearLayout.LayoutParams(-1, dp(96))" in _v
+      and 'Ui.button(c, "", 0xFFF7F7FB, INK, 24)' in _v
+      and "RESULT_HINT" in _v and "resultBox.setMinimumHeight(dp(76))" in _v
       and "LinearLayout resultBox = Ui.hbox(c)" in _v and "resultBox.setGravity(Gravity.BOTTOM)" in _v
-      and "question.setMaxLines(4)" in _v and "explain.setMaxLines(3)" in _v
+      and "question.setMaxLines(3)" in _v and "explain.setMaxLines(2)" in _v
       and "completeView.setGravity(Gravity.CENTER)" in _v
       and 'scoreBig.setText("答对 " + correct + " / " + total + " 题")' in _v
       and "progressFill" in _v and "SpannableString" in _v,
       "quiz keeps four tall rows, a progress bar and a fixed result panel for post-answer detail")
 check("if (n > 72) return 24;" in _sizer and "return 34;" in _sizer,
       "long questions stay readable without squeezing the option grid")
-check("urlEdit.setTextSize(18)" in raw_s,
-      "URL field uses an explicit sp after the global scale was removed")
+check("urlEdit.setTextSize(TypedValue.COMPLEX_UNIT_PX" in raw_s,
+      "URL field goes through the same px normalization as the rest of the UI")
 check('"家长设置", 28' in raw_s and '"知行答题守护", 38' in m,
       "page titles are enlarged for TV viewing")
 check("Ui.RADIUS_DP" in raw_s and "Ui.RADIUS_DP" in m
       and "Ui.RADIUS_DP" in _pin and "Ui.RADIUS_DP" in _wrong,
       "all pages share the unified card radius")
-check("Ui.fixed(this, 64)" in m and "Ui.fixed(this, 48)" in s,
-      "fixed heights grow with the larger type scale")
+check("title.setMinimumHeight(Ui.dp(this, 50))" in m
+      and "pageTitle.setMinimumHeight(Ui.dp(this, 48))" in s,
+      "page titles use a minimum height so text can never be clipped")
 check(m.count("setLineSpacing(Ui.dp(this, 2), 1.08f)") == 2
-      and "card.setPadding(Ui.dp(this, 26)" in m
+      and "card.setPadding(Ui.dp(this, 24)" in m
       and '.append("每 ").append(st.intervalSec()).append(" 秒 · 每轮 ")' in m,
       "home cards stay compact so enlarged text is never clipped")
 
@@ -406,10 +408,47 @@ check("paintButton(btnGuard, GuardState.toggleLabel(running));" in m
 check('Ui.tv(this, "知行答题守护", 38' in m and 'Ui.tv(this, "家长设置", 28' in raw_s
       and 'Ui.tv(this, text, 16, Ui.MUTED' in s,
       "home > settings title > note is an explicit type hierarchy")
-check('label("", 16, MUTED' in _v and 'label("", 19, PURPLE' in _v
-      and '知行答题  /  答题守护", 16' in _v,
+check('label("", 14, MUTED' in _v and 'label("", 17, PURPLE' in _v
+      and '知行答题  /  答题守护", 14' in _v,
       "quiz hint / topic / brand stay restrained while the question grows")
 check('Ui.button(this, label, bg, fg, 20)' in m and 'Ui.button(this, "", Ui.BTN_BG, Ui.TEXT, 18)' in s,
       "button sizes are chosen per page, not multiplied globally")
+
+# ---- v1.0.7：跨屏自适应字号（不再写死 sp，按容器实测收缩） ----
+_fit_tv = strip_comments(read(os.path.join(_src, "FitTextView.java")))
+_fit_btn = strip_comments(read(os.path.join(_src, "FitButton.java")))
+_auto = strip_comments(read(os.path.join(_src, "AutoFit.java")))
+
+check("deviceScale" in _sizer and "MIN_SCALE" in _sizer and "MAX_SCALE" in _sizer,
+      "type size is normalized to the screen width instead of a fixed sp")
+check("COMPLEX_UNIT_PX" in _ui and "setFitRangePx" in _ui,
+      "Ui hands every control a pixel-based fit range")
+check("class FitTextView extends TextView" in _fit_tv
+      and "AutoFit.bestPx" in _fit_tv and "onMeasure" in _fit_tv,
+      "text views shrink to their measured bounds instead of clipping")
+check("class FitButton extends Button" in _fit_btn and "AutoFit.bestPx" in _fit_btn,
+      "buttons shrink to their measured bounds too")
+check("StaticLayout" in _auto and "getLineCount" in _auto and "getHeight" in _auto,
+      "fit decision uses the real layout line count and height")
+check("Ui.fitDesign(question, Math.min(30, QuizTextSizer.sp(q.text)))" in _v,
+      "quiz question keeps its length cap but lets measurement pick the final size")
+check("resultBox.setMinimumHeight(dp(76))" in _v,
+      "explanation panel grows with its text instead of a hard 96dp")
+check("scroll.setFillViewport(true)" in m and "scroll.addView(l" in m,
+      "home page is scrollable so short screens never cut content off")
+
+# ---- v1.0.7：16:9 画布（1080p / 4K / 720p 同一比例） ----
+check("canvasScale" in _sizer and "BASE_WIDTH_PX = 1920" in _sizer,
+      "16:9 canvas normalization is a pure-Java rule with a 1080p baseline")
+check("TvDisplay.wrap" in raw_m and "TvDisplay.wrap" in raw_s and "TvDisplay.wrap" in _wrong,
+      "home, settings and the wrong-book page share the same 16:9 scaling")
+check("TvDisplay.wrap" in _svc,
+      "the quiz overlay is scaled too, not just the activities")
+
+# ---- v1.0.7：答题页固定满屏（无滚动，选项区吃满剩余高度） ----
+check("root.addView(body, new FrameLayout.LayoutParams(-1, -1))" in _v,
+      "quiz body fills the whole window instead of scrolling")
+check("new ScrollView" not in _v,
+      "quiz page does not need a scroll container any more")
 
 print("LAYOUT_CONTRACT_OK total=%d" % TOTAL)

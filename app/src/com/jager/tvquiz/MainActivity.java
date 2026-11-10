@@ -19,6 +19,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -62,6 +63,11 @@ public class MainActivity extends Activity {
             handler.postDelayed(this, 1000);
         }
     };
+
+    /** 16:9 画布：把本页统一到 1920×1080 设计基准（4K 自动 2 倍等比）。 */
+    @Override protected void attachBaseContext(android.content.Context base) {
+        super.attachBaseContext(TvDisplay.wrap(base));
+    }
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -190,9 +196,16 @@ public class MainActivity extends Activity {
 
     private void openOverlaySettings() {
         if (Build.VERSION.SDK_INT < 23) return;
+        // 未授权时「开启守护 / 立即出题」都会走到这里：先讲清楚要做什么，
+        // 避免用户以为按钮坏了（部分电视的授权页入口很隐蔽）。
+        Toast.makeText(this, "请允许「显示在其他应用上层」，返回后再点「开启守护」",
+                Toast.LENGTH_LONG).show();
         Intent i = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()));
         try { startActivity(i); }
-        catch (Exception e) { Toast.makeText(this, "该设备没有悬浮窗授权入口", Toast.LENGTH_LONG).show(); }
+        catch (Exception e) {
+            Toast.makeText(this, "这台电视没有悬浮窗授权页，请在 系统设置 → 应用权限 中手动允许",
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     private Button actionButton(LinearLayout row, String label, int bg, View.OnClickListener l) {
@@ -201,7 +214,7 @@ public class MainActivity extends Activity {
         b.setOnClickListener(l);
         Ui.focus(b, this, bg, Ui.PURPLE_DARK, fg);
         // 三列等宽：不写死 190dp，任意屏宽都对齐成 3 列。
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, Ui.dp(this, 68), 1f);
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, Ui.dp(this, 66), 1f);
         p.setMargins(Ui.dp(this, 10), Ui.dp(this, 6), Ui.dp(this, 10), Ui.dp(this, 6));
         row.addView(b, p);
         return b;
@@ -232,27 +245,33 @@ public class MainActivity extends Activity {
         LinearLayout l = Ui.vbox(this);
         l.setBackgroundColor(Ui.BG);
         l.setGravity(Gravity.TOP);
-        l.setPadding(Ui.dp(this, 44), Ui.dp(this, 24), Ui.dp(this, 44), Ui.dp(this, 16));
+        l.setPadding(Ui.dp(this, 44), Ui.dp(this, 14), Ui.dp(this, 44), Ui.dp(this, 10));
 
         TextView title = Ui.tv(this, "知行答题守护", 38, Ui.TEXT);
         title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        l.addView(title, Ui.fixed(this, 64));
-        l.addView(Ui.tv(this, "电视答题练习  ·  应用版本 " + appVersion,
-                18, Ui.MUTED), Ui.fixed(this, 42));
+        // 最小高度而不是固定高度：字号放大或窄屏时让文字撑开，不被裁切。
+        title.setMinimumHeight(Ui.dp(this, 50));
+        l.addView(title, Ui.wrap());
+        TextView subtitle = Ui.tv(this, "电视答题练习  ·  应用版本 " + appVersion,
+                18, Ui.MUTED);
+        subtitle.setMinimumHeight(Ui.dp(this, 34));
+        l.addView(subtitle, Ui.wrap());
 
         LinearLayout cards = Ui.hbox(this);
         cards.setGravity(Gravity.CENTER_VERTICAL);
         heroStatus = Ui.tv(this, "", 32, Ui.PURPLE, Gravity.LEFT);
         heroStatus.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        guardDetail = Ui.tv(this, "", 21, Ui.TEXT, Gravity.LEFT);
+        guardDetail = Ui.tv(this, "", 19, Ui.TEXT, Gravity.LEFT);
         addSummaryCard(cards, "守护状态", heroStatus, guardDetail);
-        status = Ui.tv(this, "", 21, Ui.TEXT, Gravity.LEFT);
+        status = Ui.tv(this, "", 19, Ui.TEXT, Gravity.LEFT);
         status.setLineSpacing(Ui.dp(this, 2), 1.08f);
         addSummaryCard(cards, "学习配置", status);
-        statusRight = Ui.tv(this, "", 21, Ui.TEXT, Gravity.LEFT);
+        statusRight = Ui.tv(this, "", 19, Ui.TEXT, Gravity.LEFT);
         statusRight.setLineSpacing(Ui.dp(this, 2), 1.08f);
         addSummaryCard(cards, "题库与设备", statusRight);
-        l.addView(cards, Ui.fill(1));
+        // 卡片高度随文字增长（最小 170dp），不再用 weight 硬压，避免小屏裁切。
+        cards.setMinimumHeight(Ui.dp(this, 170));
+        l.addView(cards, Ui.wrap());
 
         // 首页 3 列 × 2 排：上排高频操作，下排权限 / 数据 / 厂商入口。
         // 单一守护开关的文案与底色仍由 GuardState.toggle* 给出；运行中点击先过
@@ -275,7 +294,7 @@ public class MainActivity extends Activity {
                 startActivity(new Intent(MainActivity.this, SettingsActivity.class));
             }
         });
-        l.addView(row1, Ui.fixed(this, 78));
+        l.addView(row1, Ui.fixed(this, 70));
         gridRows.add(r1);
 
         LinearLayout row2 = Ui.hbox(this);
@@ -296,30 +315,45 @@ public class MainActivity extends Activity {
                         Toast.LENGTH_LONG).show();
             }
         });
-        l.addView(row2, Ui.fixed(this, 78));
+        l.addView(row2, Ui.fixed(this, 70));
         gridRows.add(r2);
         wireGrid();
 
-        l.addView(Ui.tv(this,
+        TextView hint = Ui.tv(this,
                 "开启守护后按 Home 切到任意应用，到点弹出全屏答题页；Home 键属系统级按键，第三方无法拦截。\n"
                         + "卸载前请先关闭守护；遮罩卡住可在电脑执行 adb shell am force-stop com.jager.tvquiz",
-                16, Ui.MUTED), Ui.fixed(this, 56));
+                16, Ui.MUTED);
+        hint.setLineSpacing(Ui.dp(this, 2), 1.12f);
+        hint.setMinimumHeight(Ui.dp(this, 38));
+        l.addView(hint, Ui.wrap());
 
-        rootView.addView(l, new FrameLayout.LayoutParams(
+        // 整页放进 ScrollView：小屏 / 系统大字号时内容可滚动，任何电视都看得到全部文字。
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.setClipToPadding(false);
+        scroll.addView(l, new ScrollView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        rootView.addView(scroll, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        // 初始焦点放在第一排第一个按钮；页面先停在顶部，避免系统为了显示焦点
+        // 把标题滚出屏幕。用户移动焦点时 ScrollView 仍会自动跟随。
+        btnGuard.requestFocus();
+        scroll.post(new Runnable() {
+            @Override public void run() { scroll.scrollTo(0, 0); }
+        });
         return rootView;
     }
 
     private void addSummaryCard(LinearLayout row, String heading, TextView... values) {
         LinearLayout card = Ui.vbox(this);
         card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(Ui.dp(this, 26), Ui.dp(this, 20), Ui.dp(this, 26), Ui.dp(this, 20));
+        card.setPadding(Ui.dp(this, 24), Ui.dp(this, 10), Ui.dp(this, 24), Ui.dp(this, 10));
         card.setBackground(Ui.round(Ui.CARD, Ui.RADIUS_DP, this));
         TextView caption = Ui.tv(this, heading, 19, Ui.MUTED, Gravity.LEFT);
         card.addView(caption);
         for (TextView value : values) {
             LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
-            p.topMargin = Ui.dp(this, 12);
+            p.topMargin = Ui.dp(this, 8);
             card.addView(value, p);
         }
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, -1, 1);

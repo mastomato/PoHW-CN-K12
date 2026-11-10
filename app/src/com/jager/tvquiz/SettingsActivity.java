@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.text.InputType;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -64,6 +65,11 @@ public class SettingsActivity extends Activity {
     private final java.util.List<View[]> focusRows = new java.util.ArrayList<View[]>();
     private Button btnChangePin, btnSave;
 
+    /** 16:9 画布：把本页统一到 1920×1080 设计基准（4K 自动 2 倍等比）。 */
+    @Override protected void attachBaseContext(android.content.Context base) {
+        super.attachBaseContext(TvDisplay.wrap(base));
+    }
+
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         st = new SettingsStore(this);
@@ -117,13 +123,17 @@ public class SettingsActivity extends Activity {
         l.setGravity(Gravity.CENTER_HORIZONTAL);
 
         gateTitle = Ui.tv(this, "", 26, Ui.TEXT);
-        l.addView(gateTitle, Ui.fixed(this, 50));
+        gateTitle.setMinimumHeight(Ui.dp(this, 50));
+        l.addView(gateTitle, Ui.wrap());
         gateMask = Ui.tv(this, "", 34, Ui.AMBER);
-        l.addView(gateMask, Ui.fixed(this, 58));
+        gateMask.setMinimumHeight(Ui.dp(this, 58));
+        l.addView(gateMask, Ui.wrap());
         gateMsg = Ui.tv(this, "", 18, Ui.AMBER);
-        l.addView(gateMsg, Ui.fixed(this, 40));
+        gateMsg.setMinimumHeight(Ui.dp(this, 40));
+        l.addView(gateMsg, Ui.wrap());
         gateState = Ui.tv(this, "", 16, Ui.MUTED);
-        l.addView(gateState, Ui.fixed(this, 38));
+        gateState.setMinimumHeight(Ui.dp(this, 38));
+        l.addView(gateState, Ui.wrap());
 
         String[] keys = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "清空", "0", "确定"};
         for (int row = 0; row < 4; row++) {
@@ -144,12 +154,16 @@ public class SettingsActivity extends Activity {
             }
             l.addView(r, Ui.fixed(this, 78));
         }
-        l.addView(Ui.tv(this,
+        TextView keyHint = Ui.tv(this,
                 "遥控器可直接按数字键输入；也可以点屏幕键盘，输完点「确定」。",
-                16, Ui.MUTED), Ui.fixed(this, 36));
-        l.addView(Ui.tv(this,
+                16, Ui.MUTED);
+        keyHint.setMinimumHeight(Ui.dp(this, 36));
+        l.addView(keyHint, Ui.wrap());
+        TextView forgotHint = Ui.tv(this,
                 "忘记密码请在电脑执行：adb shell pm clear com.jager.tvquiz（会清空全部设置与统计）",
-                16, Ui.MUTED), Ui.fixed(this, 36));
+                16, Ui.MUTED);
+        forgotHint.setMinimumHeight(Ui.dp(this, 36));
+        l.addView(forgotHint, Ui.wrap());
         return l;
     }
 
@@ -238,12 +252,28 @@ public class SettingsActivity extends Activity {
         return p;
     }
 
-    /** 统一行：左侧固定标签，右侧取值按钮按 weight 填满窄栏，不再写死 178dp。 */
+    /**
+     * 标签列宽按屏宽收缩：窄屏不再固定吃 200dp，右侧取值按钮始终留得出空间。
+     * 1080p（960dp 逻辑宽）仍是 200dp，1280×720 电视约 150–180dp。
+     */
+    private int labelWidthDp() {
+        float widthDp = getResources().getDisplayMetrics().widthPixels
+                / getResources().getDisplayMetrics().density;
+        int v = (int) (widthDp * 0.22f);
+        return Math.max(112, Math.min(LABEL_DP, v));
+    }
+
+    private int subjectLabelWidthDp() {
+        int v = (int) (labelWidthDp() * 0.66f);
+        return Math.max(76, Math.min(SUBJ_LABEL_DP, v));
+    }
+
+    /** 统一行：左侧自适应标签，右侧取值按钮按 weight 填满窄栏，不再写死 178dp。 */
     private Button addRow(LinearLayout parent, String label, View.OnClickListener l) {
         LinearLayout row = Ui.hbox(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.addView(Ui.tv(this, label, 19, Ui.TEXT, Gravity.LEFT),
-                new LinearLayout.LayoutParams(Ui.dp(this, LABEL_DP),
+                new LinearLayout.LayoutParams(Ui.dp(this, labelWidthDp()),
                         ViewGroup.LayoutParams.WRAP_CONTENT));
         Button b = Ui.button(this, "", Ui.BTN_BG, Ui.TEXT, 18);
         b.setSingleLine(false);
@@ -276,10 +306,13 @@ public class SettingsActivity extends Activity {
         root.setBackgroundColor(Ui.BG);
         root.setPadding(Ui.dp(this, 36), Ui.dp(this, 10), Ui.dp(this, 36), Ui.dp(this, 8));
 
-        root.addView(Ui.tv(this, "家长设置", 28, Ui.TEXT), Ui.fixed(this, 48));
+        TextView pageTitle = Ui.tv(this, "家长设置", 28, Ui.TEXT);
+        pageTitle.setMinimumHeight(Ui.dp(this, 48));
+        root.addView(pageTitle, Ui.wrap());
         pinState = Ui.tv(this, "", 16, Ui.MUTED, Gravity.LEFT);
         pinState.setPadding(Ui.dp(this, GUTTER_DP), 0, 0, 0);
-        root.addView(pinState, Ui.fixed(this, 30));
+        pinState.setMinimumHeight(Ui.dp(this, 30));
+        root.addView(pinState, Ui.wrap());
 
         ScrollView sv = new ScrollView(this);
         sv.setFillViewport(true);
@@ -393,7 +426,9 @@ public class SettingsActivity extends Activity {
         urlEdit = new EditText(this);
         urlEdit.setSingleLine(true);
         urlEdit.setHint("https://your-server/  (index.json 所在目录)");
-        urlEdit.setTextSize(18);
+        // 输入框不是 FitTextView，同样按「屏幕归一 + 忽略 fontScale」落像素，避免大字模式下被裁。
+        urlEdit.setTextSize(TypedValue.COMPLEX_UNIT_PX, QuizTextSizer.px(18,
+                getResources().getDisplayMetrics().density, Ui.typeScale(this)));
         urlEdit.setTextColor(Ui.TEXT);
         urlEdit.setHintTextColor(Ui.MUTED);
         urlEdit.setBackground(Ui.roundBorder(Ui.BTN_BG, Ui.BORDER, 8, this));
@@ -542,7 +577,7 @@ public class SettingsActivity extends Activity {
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.addView(Ui.tv(this, Subjects.name(subj), 18, Ui.TEXT, Gravity.LEFT),
                 new LinearLayout.LayoutParams(
-                        Ui.dp(this, SUBJ_LABEL_DP), ViewGroup.LayoutParams.WRAP_CONTENT));
+                        Ui.dp(this, subjectLabelWidthDp()), ViewGroup.LayoutParams.WRAP_CONTENT));
 
         Button ed = Ui.button(this, "", Ui.BTN_BG, Ui.TEXT, 18);
         ed.setSingleLine(false);

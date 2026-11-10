@@ -74,11 +74,15 @@ public final class PinVerifyView {
         card.setPadding(Ui.dp(ctx, 30), Ui.dp(ctx, 20), Ui.dp(ctx, 30), Ui.dp(ctx, 18));
         card.setGravity(Gravity.CENTER_HORIZONTAL);
 
-        card.addView(Ui.tv(ctx, title, 24, Ui.TEXT), Ui.fixed(ctx, 48));
+        TextView titleView = Ui.tv(ctx, title, 24, Ui.TEXT);
+        titleView.setMinimumHeight(Ui.dp(ctx, 48));
+        card.addView(titleView, Ui.wrap());
         mask = Ui.tv(ctx, "", 32, Ui.AMBER);
-        card.addView(mask, Ui.fixed(ctx, 56));
+        mask.setMinimumHeight(Ui.dp(ctx, 56));
+        card.addView(mask, Ui.wrap());
         msg = Ui.tv(ctx, "", 18, Ui.AMBER);
-        card.addView(msg, Ui.fixed(ctx, 36));
+        msg.setMinimumHeight(Ui.dp(ctx, 36));
+        card.addView(msg, Ui.wrap());
 
         String[] keys = {"1", "2", "3", "4", "5", "6",
                 "7", "8", "9", "清空", "0", "确定"};
@@ -95,8 +99,9 @@ public final class PinVerifyView {
                 });
                 Ui.focus(btn, ctx, bg, fg);
                 if (first == null) first = btn;
+                // 三列等分卡片宽度：小屏浮层变窄时按键跟着收，不会顶出卡片。
                 LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
-                        Ui.dp(ctx, 132), Ui.dp(ctx, 64));
+                        0, Ui.dp(ctx, 64), 1f);
                 p.setMargins(Ui.dp(ctx, 7), Ui.dp(ctx, 4), Ui.dp(ctx, 7), Ui.dp(ctx, 4));
                 r.addView(btn, p);
             }
@@ -115,10 +120,15 @@ public final class PinVerifyView {
         nb.gravity = Gravity.CENTER_HORIZONTAL;
         card.addView(cancel, nb);
 
-        card.addView(Ui.tv(ctx, footer, 16, Ui.MUTED), Ui.fixed(ctx, 36));
+        TextView footerView = Ui.tv(ctx, footer, 16, Ui.MUTED);
+        footerView.setMinimumHeight(Ui.dp(ctx, 36));
+        card.addView(footerView, Ui.wrap());
 
+        // 卡片宽度自适应：1080p 下仍是 560dp，窄屏时最多占屏宽减 48dp 边距。
+        int screenW = ctx.getResources().getDisplayMetrics().widthPixels;
+        int cardW = Math.min(Ui.dp(ctx, 560), screenW - Ui.dp(ctx, 48));
         FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(
-                Ui.dp(ctx, 560), ViewGroup.LayoutParams.WRAP_CONTENT);
+                cardW, ViewGroup.LayoutParams.WRAP_CONTENT);
         cp.gravity = Gravity.CENTER;
         layer.addView(card, cp);
         refresh();

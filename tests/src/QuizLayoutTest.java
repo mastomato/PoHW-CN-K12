@@ -23,6 +23,14 @@ public class QuizLayoutTest {
         ok("49~72 字 -> 27sp", QuizTextSizer.sp(cn(60)) == 27);
         ok("超过 72 字 -> 24sp", QuizTextSizer.sp(cn(100)) == 24);
 
+        ok("16:9 1080p 画布比例 = 1.0", Math.abs(QuizTextSizer.canvasScale(1920, 1080) - 1f) < 1e-6);
+        ok("16:9 4K 画布比例 = 2.0（整体 2 倍等比）",
+                Math.abs(QuizTextSizer.canvasScale(3840, 2160) - 2f) < 1e-6);
+        ok("16:9 720p 画布比例 ≈ 0.667（等比缩小）",
+                Math.abs(QuizTextSizer.canvasScale(1280, 720) - 2f / 3f) < 1e-3);
+        ok("非 16:9 取短边，不把内容推出画面",
+                Math.abs(QuizTextSizer.canvasScale(1920, 1200) - 1f) < 1e-6);
+
         boolean mono = true;
         int prev = Integer.MAX_VALUE;
         for (int n = 0; n <= 120; n++) {

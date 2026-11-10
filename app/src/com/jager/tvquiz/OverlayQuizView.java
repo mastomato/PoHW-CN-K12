@@ -92,21 +92,19 @@ public final class OverlayQuizView {
         root.setFocusableInTouchMode(true);
         root.setBackgroundColor(BG);
 
-        ScrollView scroll = new ScrollView(c);
-        scroll.setFillViewport(true);
-        scroll.setClipToPadding(false);
-        root.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
+        // 答题页固定满屏：不再用 ScrollView，卡片按 weight 吃掉整块剩余高度，
+        // 题干 / 四个选项 / 解析面板全部落在一屏内，遥控器无需也无法滚动页面。
         LinearLayout body = Ui.vbox(c);
         body.setGravity(Gravity.CENTER_VERTICAL);
-        body.setPadding(dp(40), dp(16), dp(40), dp(16));
-        scroll.addView(body);
-        body.addView(label("知行答题  /  答题守护", 16, MUTED, false));
+        body.setPadding(dp(40), dp(12), dp(40), dp(12));
+        root.addView(body, new FrameLayout.LayoutParams(-1, -1));
+        body.addView(label("知行答题  /  答题守护", 14, MUTED, false));
         LinearLayout header = Ui.hbox(c);
         header.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams headerLp = new LinearLayout.LayoutParams(-1, -2);
-        headerLp.topMargin = dp(7);
+        headerLp.topMargin = dp(4);
         body.addView(header, headerLp);
-        TextView heading = label("答题练习", 30, INK, true);
+        TextView heading = label("答题练习", 26, INK, true);
         header.addView(heading, new LinearLayout.LayoutParams(0, -2, 1));
         sideProgress = label("", 20, PURPLE, true);
         sideProgress.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
@@ -115,7 +113,7 @@ public final class OverlayQuizView {
         LinearLayout progressTrack = Ui.hbox(c);
         progressTrack.setBackground(Ui.round(0xFFE4E3EF, 2, c));
         LinearLayout.LayoutParams trackLp = new LinearLayout.LayoutParams(-1, dp(4));
-        trackLp.topMargin = dp(10);
+        trackLp.topMargin = dp(6);
         body.addView(progressTrack, trackLp);
         progressFill = new View(c);
         progressFill.setBackground(Ui.round(PURPLE, 2, c));
@@ -123,33 +121,33 @@ public final class OverlayQuizView {
         progressRest = new View(c);
         progressTrack.addView(progressRest, new LinearLayout.LayoutParams(0, -1, 0.95f));
 
-        tip = label("", 16, MUTED, false);
+        tip = label("", 14, MUTED, false);
         LinearLayout.LayoutParams tipLp = new LinearLayout.LayoutParams(-1, -2);
-        tipLp.topMargin = dp(8);
+        tipLp.topMargin = dp(4);
         body.addView(tip, tipLp);
         renderTip();
 
         // 题干卡外层：左侧紫色竖条作为视觉锚点，卡片吃掉整页剩余高度。
         cardRow = Ui.hbox(c);
         LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, 0, 1f);
-        rowLp.topMargin = dp(16);
+        rowLp.topMargin = dp(6);
         body.addView(cardRow, rowLp);
         View accent = new View(c);
         accent.setBackground(Ui.round(PURPLE, 2, c));
         cardRow.addView(accent, new LinearLayout.LayoutParams(dp(4), -1));
 
         LinearLayout card = Ui.vbox(c);
-        card.setPadding(dp(26), dp(18), dp(26), dp(18));
+        card.setPadding(dp(20), dp(12), dp(20), dp(12));
         card.setBackground(shape(WHITE, 0));
         cardRow.addView(card, new LinearLayout.LayoutParams(0, -1, 1f));
 
-        topic = label("", 19, PURPLE, true);
+        topic = label("", 17, PURPLE, true);
         card.addView(topic);
-        question = label("", 34, INK, true);
+        question = label("", 30, INK, true);
         question.setGravity(Gravity.CENTER);
-        question.setPadding(0, dp(14), 0, dp(16));
+        question.setPadding(0, dp(8), 0, dp(6));
         question.setLineSpacing(dp(4), 1.08f);
-        question.setMaxLines(4);
+        question.setMaxLines(3);
         question.setEllipsize(TextUtils.TruncateAt.END);
         card.addView(question, new LinearLayout.LayoutParams(-1, -2));
 
@@ -158,10 +156,10 @@ public final class OverlayQuizView {
         card.addView(options, new LinearLayout.LayoutParams(-1, 0, 1f));
         for (int i = 0; i < opts.length; i++) {
             final int choice = i;
-            Button b = Ui.button(c, "", 0xFFF7F7FB, INK, 27);
+            Button b = Ui.button(c, "", 0xFFF7F7FB, INK, 24);
             b.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
-            b.setMinHeight(dp(56));
-            b.setPadding(dp(20), dp(11), dp(20), dp(11));
+            b.setMinHeight(dp(38));
+            b.setPadding(dp(18), dp(6), dp(18), dp(6));
             b.setFocusable(false);
             b.setFocusableInTouchMode(false);
             b.setOnClickListener(new View.OnClickListener() {
@@ -179,21 +177,23 @@ public final class OverlayQuizView {
         LinearLayout resultBox = Ui.hbox(c);
         resultBox.setGravity(Gravity.BOTTOM);
         resultBox.setBackground(Ui.round(0xFFF5F5FB, 12, c));
-        resultBox.setPadding(dp(18), dp(12), dp(18), dp(12));
-        LinearLayout.LayoutParams resultLp = new LinearLayout.LayoutParams(-1, dp(96));
+        resultBox.setPadding(dp(16), dp(8), dp(16), dp(8));
+        // 最小高度而不是固定 96dp：解析较长时面板随文字撑开，不再裁掉最后一行。
+        resultBox.setMinimumHeight(dp(76));
+        LinearLayout.LayoutParams resultLp = new LinearLayout.LayoutParams(-1, -2);
         resultLp.topMargin = dp(12);
         card.addView(resultBox, resultLp);
         LinearLayout resultText = Ui.vbox(c);
         resultText.setGravity(Gravity.CENTER_VERTICAL);
-        feedback = label(RESULT_HINT, 20, MUTED, true);
+        feedback = label(RESULT_HINT, 17, MUTED, true);
         resultText.addView(feedback);
-        explain = label("", 19, MUTED, false);
-        explain.setLineSpacing(dp(3), 1f);
-        explain.setMaxLines(3);
+        explain = label("", 16, MUTED, false);
+        explain.setLineSpacing(dp(2), 1f);
+        explain.setMaxLines(2);
         explain.setEllipsize(TextUtils.TruncateAt.END);
         resultText.addView(explain);
         resultBox.addView(resultText, new LinearLayout.LayoutParams(0, -1, 1f));
-        next = Ui.button(c, "下一题  →", PURPLE, WHITE, 20);
+        next = Ui.button(c, "下一题  →", PURPLE, WHITE, 17);
         next.setFocusable(false);
         next.setFocusableInTouchMode(false);
         next.setBackground(shape(PURPLE, 0));
@@ -204,8 +204,8 @@ public final class OverlayQuizView {
                 else if (flow.isAnswered() && picked != correctIndex) requestNext();
             }
         });
-        LinearLayout.LayoutParams nextLp = new LinearLayout.LayoutParams(dp(220), dp(58));
-        nextLp.leftMargin = dp(16);
+        LinearLayout.LayoutParams nextLp = new LinearLayout.LayoutParams(dp(170), dp(46));
+        nextLp.leftMargin = dp(10);
         resultBox.addView(next, nextLp);
 
         // 一轮结束：整块居中显示得分，替代题干卡，视觉重心落在屏幕中央。
@@ -216,27 +216,27 @@ public final class OverlayQuizView {
         LinearLayout.LayoutParams completeLp = new LinearLayout.LayoutParams(-1, 0, 1f);
         completeLp.topMargin = dp(16);
         body.addView(completeView, completeLp);
-        scoreBig = label("", 54, INK, true);
+        scoreBig = label("", 44, INK, true);
         scoreBig.setGravity(Gravity.CENTER);
         completeView.addView(scoreBig);
-        scoreSub = label("", 24, PURPLE, true);
+        scoreSub = label("", 20, PURPLE, true);
         scoreSub.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams subLp = new LinearLayout.LayoutParams(-1, -2);
-        subLp.topMargin = dp(12);
+        subLp.topMargin = dp(8);
         completeView.addView(scoreSub, subLp);
-        scoreHint = label("", 17, MUTED, false);
+        scoreHint = label("", 15, MUTED, false);
         scoreHint.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams hintLp = new LinearLayout.LayoutParams(-1, -2);
-        hintLp.topMargin = dp(18);
+        hintLp.topMargin = dp(10);
         completeView.addView(scoreHint, hintLp);
-        Button nextRound = Ui.button(c, "开始下一轮  →", PURPLE, WHITE, 22);
+        Button nextRound = Ui.button(c, "开始下一轮  →", PURPLE, WHITE, 18);
         nextRound.setFocusable(false);
         nextRound.setFocusableInTouchMode(false);
         nextRound.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { requestNewRound(); }
         });
-        LinearLayout.LayoutParams nrLp = new LinearLayout.LayoutParams(dp(280), dp(64));
-        nrLp.topMargin = dp(24);
+        LinearLayout.LayoutParams nrLp = new LinearLayout.LayoutParams(dp(240), dp(52));
+        nrLp.topMargin = dp(14);
         completeView.addView(nextRound, nrLp);
     }
 
@@ -335,7 +335,9 @@ public final class OverlayQuizView {
         if (completeView != null) completeView.setVisibility(View.GONE);
         topic.setText(meta);
         question.setText(q.text == null ? "" : q.text);
-        question.setTextSize(Math.min(34, QuizTextSizer.sp(q.text)));
+        // 题面长度只决定字号上限；实际字号由 AutoFit 按卡片可用宽高收缩，
+        // 保证长题、窄屏、系统大字号下都不超框。
+        Ui.fitDesign(question, Math.min(30, QuizTextSizer.sp(q.text)));
         for (int i = 0; i < 4; i++) {
             String answer = q.options != null && i < q.options.length && q.options[i] != null
                     ? q.options[i] : "";

@@ -3,6 +3,7 @@ package com.jager.tvquiz;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -14,9 +15,9 @@ import android.widget.TextView;
 /**
  * 代码布局公共工具：统一尺寸、卡片圆角与遥控器焦点高亮。
  *
- * v1.0.5 逐页重排：字号由每个页面按自身空间显式指定，不做全局等比放大。
- * 标题大、正文适中、说明小；卡片/按钮/行高按该页文字量单独配过，
- * 答题页更是用一屏预算重新分区。这样既放大了远距离可读性，又不会溢出裁切。
+ * v1.0.7 起字号不再写死：每个控件按「设计 sp × 屏幕归一比例」算出像素上限，
+ * 再由 FitTextView / FitButton 在测量阶段按容器宽高收缩。这样 720p / 1080p / 4K
+ * 电视上的字号观感一致，系统字体放大也不会把界面撑破，文字始终完整显示。
  */
 public final class Ui {
     private Ui() {}
@@ -45,12 +46,24 @@ public final class Ui {
         return (int) (v * c.getResources().getDisplayMetrics().density + 0.5f);
     }
 
+    /** 当前设备的字号归一比例（相对 960dp 设计基准，clamp 到 0.80–1.30）。 */
+    public static float typeScale(Context c) {
+        DisplayMetrics dm = c.getResources().getDisplayMetrics();
+        return QuizTextSizer.deviceScale(dm.widthPixels, dm.density);
+    }
+
     public static LinearLayout.LayoutParams fill(int weight) {
         return new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, weight);
     }
 
     public static LinearLayout.LayoutParams fixed(Context c, int dp) {
         return new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(c, dp));
+    }
+
+    /** 高度随文字增长：配合 setMinimumHeight 使用，避免固定高度裁切内容。 */
+    public static LinearLayout.LayoutParams wrap() {
+        return new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
     }
 
     public static GradientDrawable round(int color, int radiusDp, Context c) {
@@ -71,11 +84,11 @@ public final class Ui {
     }
 
     public static TextView tv(Context c, String text, int sp, int color, int gravity) {
-        TextView t = new TextView(c);
+        FitTextView t = new FitTextView(c);
         t.setText(text);
-        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
         t.setTextColor(color);
         t.setGravity(gravity);
+        applyType(t, sp);
         return t;
     }
 
@@ -84,9 +97,8 @@ public final class Ui {
     }
 
     public static Button button(Context c, String text, int bg, int fg, int sp) {
-        Button b = new Button(c);
+        FitButton b = new FitButton(c);
         b.setText(text);
-        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
         b.setTextColor(fg);
         b.setAllCaps(false);
         b.setMinHeight(0);
@@ -98,7 +110,26 @@ public final class Ui {
                 : round(bg, RADIUS_DP, c));
         b.setFocusable(true);
         b.setFocusableInTouchMode(true);
+        applyType(b, sp);
         return b;
+    }
+
+    /**
+     * 把「设计 sp」落到像素：乘以 density 与屏幕归一比例，并绕开系统 fontScale。
+     * 同时把换算后的上下限交给自适应控件，供测量阶段按实际空间收缩。
+     */
+    public static void applyType(TextView v, int designSp) {
+        DisplayMetrics dm = v.getResources().getDisplayMetrics();
+        float maxPx = QuizTextSizer.px(designSp, dm.density, typeScale(v.getContext()));
+        float minPx = maxPx * QuizTextSizer.MIN_RATIO;
+        v.setTextSize(TypedValue.COMPLEX_UNIT_PX, maxPx);
+        if (v instanceof FitTextView) ((FitTextView) v).setFitRangePx(minPx, maxPx);
+        else if (v instanceof FitButton) ((FitButton) v).setFitRangePx(minPx, maxPx);
+    }
+
+    /** 运行期改字号上限（例如答题页按题面长度降档），同样走跨屏归一 + 自适应。 */
+    public static void fitDesign(TextView v, int designSp) {
+        applyType(v, designSp);
     }
 
     /** 遥控器 DPAD 焦点：浅色按钮使用与答题选项相同的浅紫底与加粗紫色描边。 */

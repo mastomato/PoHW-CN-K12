@@ -47,6 +47,11 @@ public class WrongBookActivity extends Activity {
         }
     };
 
+    /** 16:9 画布：把本页统一到 1920×1080 设计基准（4K 自动 2 倍等比）。 */
+    @Override protected void attachBaseContext(android.content.Context base) {
+        super.attachBaseContext(TvDisplay.wrap(base));
+    }
+
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         alive = true;
@@ -92,9 +97,9 @@ public class WrongBookActivity extends Activity {
         Button b = Ui.button(this, label, bg, fg, 20);
         b.setOnClickListener(l);
         Ui.focus(b, this, bg, Ui.PURPLE_DARK, fg);
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
-                Ui.dp(this, 190), Ui.dp(this, 62));
-        p.setMargins(Ui.dp(this, 8), 0, Ui.dp(this, 8), 0);
+        // 5 个按钮均分宽度：窄屏下不再因 190dp × 5 超出屏幕被裁。
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, Ui.dp(this, 62), 1f);
+        p.setMargins(Ui.dp(this, 6), 0, Ui.dp(this, 6), 0);
         row.addView(b, p);
         return b;
     }
@@ -104,10 +109,12 @@ public class WrongBookActivity extends Activity {
         l.setBackgroundColor(Ui.BG);
         l.setPadding(Ui.dp(this, 44), Ui.dp(this, 20), Ui.dp(this, 44), Ui.dp(this, 14));
 
-        l.addView(Ui.tv(this, "知行答题守护  /  错题库", 30, Ui.TEXT),
-                Ui.fixed(this, 54));
+        TextView pageTitle = Ui.tv(this, "知行答题守护  /  错题库", 30, Ui.TEXT);
+        pageTitle.setMinimumHeight(Ui.dp(this, 54));
+        l.addView(pageTitle, Ui.wrap());
         title = Ui.tv(this, "", 19, Ui.AMBER, Gravity.LEFT);
-        l.addView(title, Ui.fixed(this, 36));
+        title.setMinimumHeight(Ui.dp(this, 36));
+        l.addView(title, Ui.wrap());
 
         detail = Ui.tv(this, "", 21, Ui.TEXT, Gravity.LEFT);
         detail.setPadding(Ui.dp(this, 24), Ui.dp(this, 18), Ui.dp(this, 24), Ui.dp(this, 18));
@@ -136,9 +143,11 @@ public class WrongBookActivity extends Activity {
         });
         l.addView(row, Ui.fixed(this, 74));
 
-        l.addView(Ui.tv(this,
+        TextView hint = Ui.tv(this,
                 "遥控器方向键选中按钮后按确定；答错会立即记录到这里。",
-                16, Ui.MUTED), Ui.fixed(this, 34));
+                16, Ui.MUTED);
+        hint.setMinimumHeight(Ui.dp(this, 34));
+        l.addView(hint, Ui.wrap());
         return l;
     }
 
